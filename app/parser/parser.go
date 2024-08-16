@@ -128,6 +128,8 @@ type Experience struct {
 	Sentence string `json:"sentence"`
 }
 
+// test.domain.com -> test___domain___com
+
 func Parse(text string) {
 	err := godotenv.Load()
 
@@ -140,14 +142,16 @@ func Parse(text string) {
 
 	for _, paragraph := range paragraphs {
 		sentences := strings.Split(paragraph, ".")
-
+		// TODO: обрабатывать домены, из-за split(paragraph, ".") они тоже разбиваются test.com -> [test, com]
 		sentencePositions := []string{}
 		for _, sentence := range sentences {
 			combinations := GenerateCombinations(strings.Split(sentence, " "))
 			//foundedPosition := false
+
 			for _, combination := range combinations {
 				list, _ := spellInstance.Lookup(combination, spell.SuggestionLevel(spell.LevelClosest))
 				for _, l := range list {
+					// TODO: не учитывать опечатки для слов с len(word) < 3
 					if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
 						skills = append(skills, l.Word)
 					}
