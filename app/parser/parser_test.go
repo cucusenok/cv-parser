@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -45,11 +44,11 @@ func Test_GenerateCombinations(t *testing.T) {
 }
 
 type TestCase struct {
-	input    []string
-	output    []string
+	input  []string
+	output []string
 }
 
-const tests = []TestCase{
+/*const tests = []TestCase{
 	{
 		input:  "FOUNDER (START-UP)\n\n\t Nov, 2022 - May, 2023",
 		output: {
@@ -58,12 +57,12 @@ const tests = []TestCase{
 			position: ""
 		},
 	},
-}
+}*/
 
 func Test_Match(t *testing.T) {
 	// CV_FULL_PARAGRAPH_FORMATED
 	Parse(CV_ONLY_EXPIRIENCE)
-	for _, test := range tests {
+	/*for _, test := range tests {
 		assert.Equal(test.input, test.output)
-	}
+	}*/
 }

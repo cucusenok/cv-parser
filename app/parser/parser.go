@@ -141,6 +141,30 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 		return nil, err
 	}
 
+	if err = scanQuery(db, `select level from levels`, nil, func(rows *sql.Rows) error {
+		var level string
+		if err := rows.Scan(&level); err != nil {
+			if err.Error() == "sql: Scan error on column index 2, name \"cnt\": converting NULL to uint64 is unsupported" {
+				return nil
+			}
+			return err
+		}
+
+		if level != "" {
+			s.AddEntry(spell.Entry{
+				Frequency: 1,
+				Word:      level,
+				WordData: spell.WordData{
+					"type": "level",
+				},
+			})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -354,6 +378,10 @@ func Parse(text string) {
 				// TODO: добавил проверку на кол-во символов в слове. Но думаю, что не корректно в случае с QA, PM и тд.
 				if len(l.Word) < 3 {
 					continue
+				}
+
+				if l.WordData["type"] == "level" {
+					fmt.Println(l.Word)
 				}
 				if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
 					skills = append(skills, l.Word)
