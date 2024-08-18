@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"os"
 	"regexp"
 	"strings"
 
@@ -14,12 +15,24 @@ import (
 
 var spellInstance *spell.Spell
 
+/*
+	// Мы нашли должность, и понимает что должность занимает 90% строки
+	Co-Founder, Chief Design OfficerCo-Founder, Chief Design Officer
+	// мы ничего не достали отсюда, но понимаем, что строка коротка и до этого была должность - это может быть рекомендацией к тому чтобы быть компанией
+	Berkana Tech SolutionsBerkana Tech Solutions
+	Aug 2023 - Present · 1 yr 1 mo -- мы смогли спарсить промежуток
+*/
+
+// FULLSTACK DEVELOPER June, 2019 - June, 2020
+// тут есть position + тут есть промежуток времени - значит скорее всего это exprience title
+
 var (
-	regexZipCode                 *regexp.Regexp = regexp.MustCompile(`\d{4,5}(?:[-\s]\d{4})?`)
-	regexPhone                   *regexp.Regexp = regexp.MustCompile(`\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}`)
-	regexEmail                   *regexp.Regexp = regexp.MustCompile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
-	regexDomain                  *regexp.Regexp = regexp.MustCompile(`(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?`)
-	regexNickNameWithAt          *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z0-9@\-\.]*$`)
+	regexZipCode        *regexp.Regexp = regexp.MustCompile(`\d{4,5}(?:[-\s]\d{4})?`)
+	regexPhone          *regexp.Regexp = regexp.MustCompile(`\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}`)
+	regexEmail          *regexp.Regexp = regexp.MustCompile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+	regexDomain         *regexp.Regexp = regexp.MustCompile(`(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?`)
+	regexNickNameWithAt *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z0-9@\-\.]*$`)
+	// TODO: добавить учет present, для строк типа: Aug 2023 - Present · 1 yr 1 mo
 	regexYear                    *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}`)
 	regexDateRange               *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}.*(19|20)\d{2}`)
 	regexAllSymbolsAfterDot      *regexp.Regexp = regexp.MustCompile(`\..*`)
@@ -67,8 +80,12 @@ func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) err
 }
 
 func LoadSpellFromDB() (*spell.Spell, error) {
-	//pgConnectionStr := os.Getenv("PG_CONNECTION_STR")
-	pgConnectionStr := "user=postgres dbname=parser sslmode=disable password=mysecretpassword host=localhost port=1234"
+	err := godotenv.Load()
+
+	if err != nil {
+		panic(err)
+	}
+	pgConnectionStr := os.Getenv("PG_CONNECTION_STR")
 
 	s := spell.New()
 	db, err := sql.Open("postgres", pgConnectionStr)
@@ -292,6 +309,16 @@ func Parse(text string) {
 
 	fmt.Println("\n ======================================= filteredParagraphs ===================================================\n ")
 
+	/*
+			Примеры filteredParagraphs:
+
+			[
+			  'Nov, 2022 - May, 2023 ' Developed music recognition and sharing service across diverse sources1 ' Built a robust CI/CD pipeline encompassing backend services, IOS app deployment to TestFlight, Android app packaging to APK, and web deployment using GitHub Actions and AWS (EC2, S3)1 ' Developed a cross-platform application using Flutter, ensuring seamless functionality on Android, IOS, and web platforms1 ' Implemented audio decoding and playback features for streaming services on Android and IOS, utilizing proprietary Flutterplugins and programming languages such as Java/Kotlin and Swift1 ' Leveraged API integrations to enhance application functionality and connectivity, while employing GoLang for the central monolith and Python and Node for microservices.',
+		      'SENIOR FULL STACK ENGINEER',
+		      'Nov, 2020 - Nov, 2022'
+			]
+
+	*/
 	for i, paragraph := range filteredParagraphs {
 		fmt.Println(paragraph)
 		isDateParagraph := regexDateRangeExcludeEnd.MatchString(paragraph)
