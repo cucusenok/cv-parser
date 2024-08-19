@@ -43,26 +43,21 @@ func Test_GenerateCombinations(t *testing.T) {
 
 }
 
-type TestCase struct {
-	input  []string
-	output []string
+type OutputData struct {
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	Position string `json:"position"`
 }
 
-/*const tests = []TestCase{
-	{
-		input:  "FOUNDER (START-UP)\n\n\t Nov, 2022 - May, 2023",
-		output: {
-			start: "2020 nov",
-			end: "2023 may",
-			position: ""
-		},
-	},
-}*/
+type TestCase struct {
+	input  string
+	output []OutputData
+}
 
 func Test_Match(t *testing.T) {
 	// CV_FULL_PARAGRAPH_FORMATED
 	Parse(CV_ONLY_EXPIRIENCE)
-	/*for _, test := range tests {
-		assert.Equal(test.input, test.output)
-	}*/
+	//for _, test := range tests {
+	//	assert.Equal(t, test.output, test.input)
+	//}
 }
