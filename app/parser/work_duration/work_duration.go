@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -14,14 +15,51 @@ var (
 	regexMonthYear           *regexp.Regexp = regexp.MustCompile(`(?P<month>\d{1,2})[-./_](?P<year>\d{4})`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D+)?(?:(?P<month>\d{1,2})\D+)?(?P<year>\d{4})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`^(?P<year>\d{4})\D+(?P<month>\d{1,2})(\D+(?P<day>\d{1,2}))?$`)
-	regexRemoveSymbolsOld2   *regexp.Regexp = regexp.MustCompile(`^(?:(?P<day>\d{1,2})\D+)?(?P<month>\d{1,2})?\D*(?P<year>\d{4})$`)
-	regexRemoveSymbolsOld    *regexp.Regexp = regexp.MustCompile(`^(?:(\d{1,2})\D)?(?:(\d{1,2})\D)?(\d{4})$`)
-	regexRemoveSymbols       *regexp.Regexp = regexp.MustCompile(`(\d+)\D+(\d+)`)
+	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 )
 
 type WorkPeriod struct {
 	DateStart string `json:"start_date"`
 	DateEnd   string `json:"end_date"`
+}
+
+/*
+	isValidDate проверяет дату на корректность.
+	month >= 1 && month <= 12
+	day >= 1 && day <= 31
+	TODO обработать некорректные даты
+*/
+
+func isValidDate(value string) bool {
+	date := regexFullDate.FindStringSubmatch(value)
+	if len(date) == 0 {
+		return false
+	}
+
+	var month, day int
+	var err error
+
+	if len(date) == 3 {
+		month, err = strconv.Atoi(date[1])
+		day, err = strconv.Atoi(date[0])
+	} else if len(date) == 2 {
+		month, err = strconv.Atoi(date[0])
+	}
+
+	if err != nil {
+		return false
+	}
+
+	isWithoutDays := day == 0
+	onlyYear := month == 0 && day == 0
+
+	if onlyYear {
+		return true
+	} else if isWithoutDays {
+		return month >= 1 && month <= 12
+	} else {
+		return (month >= 1 && month <= 12) || (day >= 1 && day <= 31)
+	}
 }
 
 /*
@@ -72,45 +110,6 @@ func formatDayOrMonth(value string) string {
 }
 
 /*
-	formatDayOrMonth добавляет 0 в начало, если это требуется.
-	Примеры formatDayOrMonth:
-
-	1.09.2022 => 01.09.2022
-	01.9.2022 => 01.09.2022
-	1.9.2022 => 01.09.2022
-
-*/
-
-func padZeroToDate(date []string) string {
-	var year string
-	var month string
-	var day string
-
-	if len(date) == 3 {
-		year = date[2]
-		month = date[1]
-		day = date[0]
-	} else if len(date) == 2 {
-		year = date[1]
-		month = date[0]
-	} else {
-		year = date[0]
-	}
-
-	isWithoutDays := len(day) == 0
-	onlyYear := len(month) == 0 && len(day) == 0
-
-	switch {
-	case onlyYear:
-		return year
-	case isWithoutDays:
-		return fmt.Sprintf("%s.%s", formatDayOrMonth(month), year)
-	default:
-		return fmt.Sprintf("%s.%s.%s", formatDayOrMonth(day), formatDayOrMonth(month), year)
-	}
-}
-
-/*
 	formatDate форматирует дату, заменяя любые знаки между элементами даты на "." .
 	Примеры formatDate:
 
@@ -123,41 +122,10 @@ func padZeroToDate(date []string) string {
 
 */
 
-func formatDateOld(value string) string {
-	matches := regexRemoveSymbols.FindStringSubmatch(value)
-	if len(matches) == 0 {
-		return value
-	}
-	var year string
-	var month string
-	var day string
-
-	date := matches[1:]
-
-	if len(date) == 3 {
-		year = date[2]
-		month = date[1]
-		day = date[0]
-	} else if len(date) == 2 {
-		year = date[1]
-		month = date[0]
-	} else {
-		year = date[0]
-	}
-
-	isWithoutDays := len(day) == 0
-	onlyYear := len(month) == 0 && len(day) == 0
-
-	if onlyYear {
-		return year
-	} else if isWithoutDays {
-		return fmt.Sprintf("%s.%s", formatDayOrMonth(month), year)
-	}
-	return fmt.Sprintf("%s.%s.%s", formatDayOrMonth(day), formatDayOrMonth(month), year)
-}
-
 func formatDate(value string) string {
-	result := regexRemoveSymbols.ReplaceAllString(value, "$1.$2")
+	result := regexNonDigit.ReplaceAllStringFunc(value, func(s string) string {
+		return "."
+	})
 	date := strings.Split(result, ".")
 
 	var year string
@@ -214,10 +182,19 @@ func reformatPeriod(text string) WorkPeriod {
 	}
 
 	startDate := formatDate(result[0])
+
+	if !isValidDate(startDate) {
+		startDate = "Invalid start date"
+	}
+
 	endDate := fmt.Sprintf("%v", math.Inf(1))
 
 	if len(result) >= 2 {
 		endDate = formatDate(result[1])
+
+		if !isValidDate(endDate) {
+			endDate = "Invalid end date"
+		}
 	}
 
 	return WorkPeriod{
