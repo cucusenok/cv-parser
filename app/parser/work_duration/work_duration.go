@@ -13,6 +13,7 @@ var (
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`^(?P<year>\d{4})\D+(?P<month>\d{1,2})(\D+(?P<day>\d{1,2}))?$`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
+	monthPattern             *regexp.Regexp = regexp.MustCompile(`(?i)[a-zа-я]+`)
 )
 
 type WorkPeriod struct {
@@ -88,9 +89,7 @@ func convertMonthToNumber(month string) int {
 */
 
 func replaceDateWithMonthNumber(date string) string {
-	monthPattern := `(?i)[a-zа-я]+`
-	re := regexp.MustCompile(monthPattern)
-	replacedStr := re.ReplaceAllStringFunc(date, func(match string) string {
+	replacedStr := monthPattern.ReplaceAllStringFunc(date, func(match string) string {
 		index := strconv.Itoa(convertMonthToNumber(match))
 		if index != "0" {
 			res := formatDayOrMonth(index)
