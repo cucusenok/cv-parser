@@ -9,11 +9,8 @@ import (
 )
 
 var (
-	regexYear                *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}`)
-	regexDateRange           *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}.*(19|20)\d{2}`)
 	regexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
-	regexMonthYear           *regexp.Regexp = regexp.MustCompile(`(?P<month>\d{1,2})[-./_](?P<year>\d{4})`)
-	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D+)?(?:(?P<month>\d{1,2})\D+)?(?P<year>\d{4})`)
+	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`^(?P<year>\d{4})\D+(?P<month>\d{1,2})(\D+(?P<day>\d{1,2}))?$`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 )
@@ -21,6 +18,88 @@ var (
 type WorkPeriod struct {
 	DateStart string `json:"start_date"`
 	DateEnd   string `json:"end_date"`
+}
+
+type Month struct {
+	MonthRoot string `json:"month"`
+	Index     int    `json:"index"`
+}
+
+var months = []Month{
+	{MonthRoot: "jan", Index: 1},
+	{MonthRoot: "feb", Index: 2},
+	{MonthRoot: "mar", Index: 3},
+	{MonthRoot: "apr", Index: 4},
+	{MonthRoot: "may", Index: 5},
+	{MonthRoot: "jun", Index: 6},
+	{MonthRoot: "jul", Index: 7},
+	{MonthRoot: "aug", Index: 8},
+	{MonthRoot: "sep", Index: 9},
+	{MonthRoot: "oct", Index: 10},
+	{MonthRoot: "nov", Index: 11},
+	{MonthRoot: "dec", Index: 12},
+	{MonthRoot: "янв", Index: 1},
+	{MonthRoot: "фев", Index: 2},
+	{MonthRoot: "мар", Index: 3},
+	{MonthRoot: "апр", Index: 4},
+	{MonthRoot: "май", Index: 5},
+	{MonthRoot: "июн", Index: 6},
+	{MonthRoot: "июл", Index: 7},
+	{MonthRoot: "авг", Index: 8},
+	{MonthRoot: "сен", Index: 9},
+	{MonthRoot: "окт", Index: 10},
+	{MonthRoot: "ноя", Index: 11},
+	{MonthRoot: "дек", Index: 12},
+}
+
+/*
+	convertMonthToNumber Функция для замены текстового месяца на числовой.
+	Если совпадений не найдено, возвращаем 0.
+
+	•	Примеры строковых дат:
+	•	"Ноября" => "11"
+	•	"November" => "11"
+	•	"Nov" => "11"
+
+	и тд
+
+*/
+
+func convertMonthToNumber(month string) int {
+	month = strings.ToLower(month)
+	for _, m := range months {
+		if strings.Contains(month, m.MonthRoot) {
+			return m.Index
+		}
+	}
+	return 0
+}
+
+/*
+	replaceMonthWithNumber Функция для замены текстового месяца на числовой.
+	Если совпадений не найдено, возвращаем исходную строку.
+
+	•	Примеры строковых дат:
+	•	"1 Ноября 1923" => "1 11 1923"
+	•	"Ноябрь 1923" => "11 1923"
+	•	"1 November 1923" => "1 11 1923"
+	•	"Nov 1923" => "11 1923"
+
+*/
+
+func replaceDateWithMonthNumber(date string) string {
+	monthPattern := `(?i)[a-zа-я]+`
+	re := regexp.MustCompile(monthPattern)
+	replacedStr := re.ReplaceAllStringFunc(date, func(match string) string {
+		index := strconv.Itoa(convertMonthToNumber(match))
+		if index != "0" {
+			res := formatDayOrMonth(index)
+			return res
+		}
+		return match
+	})
+
+	return replacedStr
 }
 
 /*
@@ -123,7 +202,8 @@ func formatDayOrMonth(value string) string {
 */
 
 func formatDate(value string) string {
-	result := regexNonDigit.ReplaceAllStringFunc(value, func(s string) string {
+	result := replaceDateWithMonthNumber(value)
+	result = regexNonDigit.ReplaceAllStringFunc(result, func(s string) string {
 		return "."
 	})
 	date := strings.Split(result, ".")

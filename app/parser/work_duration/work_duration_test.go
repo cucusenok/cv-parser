@@ -125,38 +125,6 @@ func Test_reformatPeriod(t *testing.T) {
 				DateEnd:   "12.02.2033",
 			},
 		},
-
-		// TODO обработать некорректные даты
-		//// Incorrect date
-		//{
-		//	input: "29.1923",
-		//	output: WorkPeriod{
-		//		DateStart: "Invalid start date",
-		//		DateEnd:   "",
-		//	},
-		//},
-		//{
-		//	input: "1.29.1923",
-		//	output: WorkPeriod{
-		//		DateStart: "Invalid start date",
-		//		DateEnd:   "",
-		//	},
-		//},
-		//{
-		//	input: "33.12.1923",
-		//	output: WorkPeriod{
-		//		DateStart: "Invalid start date",
-		//		DateEnd:   "",
-		//	},
-		//},
-		//{
-		//	input: "1.12.1923 1.29.1923",
-		//	output: WorkPeriod{
-		//		DateStart: "01.12.1923",
-		//		DateEnd:   "Invalid end date",
-		//	},
-		//},
-
 		// Reverse
 		{
 			input: "1923.9.1",
@@ -165,6 +133,8 @@ func Test_reformatPeriod(t *testing.T) {
 				DateEnd:   "+Inf",
 			},
 		},
+
+		//// TODO Проблемная часть !!!
 		//// TODO не понимаю, как разделить подобные строки
 		//{
 		//	input: "1923.9.1_1923.12.3",
@@ -187,25 +157,52 @@ func Test_reformatPeriod(t *testing.T) {
 		//		DateEnd:   "03.12.1923",
 		//	},
 		//},
-		///*
-		//		TODO тут непонятно, в каком формате это должно быть
-		//
-		//			DateStart: "03.09.1923",
-		//			DateEnd:   "09.1923",
-		//	или
-		//
-		//			DateStart: "09.1923",
-		//			DateEnd:   "03.09.1923",
-		//
-		//*/
-		//
-		//{
-		//	input: "1923_9_3_9_1923",
-		//	output: WorkPeriod{
-		//		DateStart: "03.09.1923",
-		//		DateEnd:   "09.1923",
-		//	},
-		//},
+
+		// Меняем строковый месяц на числовой
+
+		{
+			input: "1 Ноября 1923 12 декабря 2033",
+			output: WorkPeriod{
+				DateStart: "01.11.1923",
+				DateEnd:   "12.12.2033",
+			},
+		},
+		{
+			input: "1 Nov 1923 12 январь 2033",
+			output: WorkPeriod{
+				DateStart: "01.11.1923",
+				DateEnd:   "12.01.2033",
+			},
+		},
+		{
+			input: "Nov 1923 январь 2033",
+			output: WorkPeriod{
+				DateStart: "11.1923",
+				DateEnd:   "01.2033",
+			},
+		},
+		{
+			input: "1923 январь 2033",
+			output: WorkPeriod{
+				DateStart: "1923",
+				DateEnd:   "01.2033",
+			},
+		},
+		{
+			input: "январь 2033 1923",
+			output: WorkPeriod{
+				DateStart: "01.2033",
+				DateEnd:   "1923",
+			},
+		},
+		// Меняем строковый месяц с опечаткой на числовой
+		{
+			input: "Декабр 1923 12 januay 2033",
+			output: WorkPeriod{
+				DateStart: "12.1923",
+				DateEnd:   "12.01.2033",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run("reformatPeriod", func(t *testing.T) {
