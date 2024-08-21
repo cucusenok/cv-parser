@@ -263,7 +263,7 @@ func reformatPeriod(text string) WorkPeriod {
 	startDate := formatDate(result[0])
 
 	if !isValidDate(startDate) {
-		startDate = "Invalid start date"
+		startDate = ""
 	}
 
 	endDate := fmt.Sprintf("%v", math.Inf(1))
@@ -272,7 +272,7 @@ func reformatPeriod(text string) WorkPeriod {
 		endDate = formatDate(result[1])
 
 		if !isValidDate(endDate) {
-			endDate = "Invalid end date"
+			endDate = ""
 		}
 	}
 
