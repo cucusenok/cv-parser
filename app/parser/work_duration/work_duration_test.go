@@ -74,7 +74,7 @@ func Test_reformatPeriod(t *testing.T) {
 				DateEnd:   "2033",
 			},
 		},
-		// Without days
+		//Without days
 		{
 			input: "1923.12",
 			output: WorkPeriod{
@@ -134,29 +134,34 @@ func Test_reformatPeriod(t *testing.T) {
 			},
 		},
 
-		//// TODO Проблемная часть !!!
-		//// TODO не понимаю, как разделить подобные строки
-		//{
-		//	input: "1923.9.1_1923.12.3",
-		//	output: WorkPeriod{
-		//		DateStart: "01.09.1923",
-		//		DateEnd:   "03.12.1923",
-		//	},
-		//},
-		//{
-		//	input: "1923_9_1_1923_12_3",
-		//	output: WorkPeriod{
-		//		DateStart: "01.09.1923",
-		//		DateEnd:   "03.12.1923",
-		//	},
-		//},
-		//{
-		//	input: "1923_9_1923_12_3",
-		//	output: WorkPeriod{
-		//		DateStart: "09.1923",
-		//		DateEnd:   "03.12.1923",
-		//	},
-		//},
+		{
+			input: "1923.9.1_1923.12.3",
+			output: WorkPeriod{
+				DateStart: "01.09.1923",
+				DateEnd:   "03.12.1923",
+			},
+		},
+		{
+			input: "1998/1/11_2000/11/11",
+			output: WorkPeriod{
+				DateStart: "11.01.1998",
+				DateEnd:   "11.11.2000",
+			},
+		},
+		{
+			input: "2001.4_2003.12.12",
+			output: WorkPeriod{
+				DateStart: "04.2001",
+				DateEnd:   "12.12.2003",
+			},
+		},
+		{
+			input: "2001_2004/12/13",
+			output: WorkPeriod{
+				DateStart: "2001",
+				DateEnd:   "13.12.2004",
+			},
+		},
 
 		// Меняем строковый месяц на числовой
 

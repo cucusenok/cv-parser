@@ -11,7 +11,8 @@ import (
 var (
 	regexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
-	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`^(?P<year>\d{4})\D+(?P<month>\d{1,2})(\D+(?P<day>\d{1,2}))?$`)
+	regexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
+	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`(?P<year>(19|20)\d{2})(\D{1}(?P<month>(\d{1,2}|(?i)[a-zа-я]+)))(\D{1}(?P<day>\d{1,2}))?`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 	monthPattern             *regexp.Regexp = regexp.MustCompile(`(?i)[a-zа-я]+`)
 )
@@ -51,6 +52,39 @@ var months = []Month{
 	{MonthRoot: "окт", Index: 10},
 	{MonthRoot: "ноя", Index: 11},
 	{MonthRoot: "дек", Index: 12},
+}
+
+/*
+	separateDates Функция разделяющая даты.
+
+	•	Примеры:
+	•	"1998.1.11_2000.11.11" => ["1998.1.11", "2000.11.11"]
+	•	"1998.2.12_2000.11" => ["1998.2.12", "2000.11"]
+	•	"1998.3.13_2000" => ["1998.3.13", "13_2000"]
+	•	"11.1998_2000.11.11" => ["11.1998", "2000.11.11"]
+	•	"1998 2000/11/11" => ["1998", "2000/11/11"]
+
+	и тд
+
+*/
+
+func separateDates(date string) []string {
+	matches := regexDates.FindAllStringSubmatch(date, -1)
+	groupNames := regexDates.SubexpNames()
+	result := []string{}
+
+	for _, match := range matches {
+		for i, name := range groupNames {
+			if len(name) == 0 {
+				continue
+			}
+			if (name == "reverseDate" || name == "normalDate") && i < len(match) && len(match[i]) > 0 {
+				result = append(result, match[i])
+			}
+		}
+	}
+
+	return result
 }
 
 /*
@@ -144,19 +178,33 @@ func isValidDate(value string) bool {
 	reverseDate возвращает дату в формате dd.mm.yyyy.
 	Примеры reverseDate:
 
+	2022/09/01 => 01.09.2022
 	2022.09.01 => 01.09.2022
 	2022.09 => 09.2022
 */
 
 func reverseDate(date string) string {
-	match := regexFullDateReverse.FindStringSubmatch(date)
+	match := regexFullDateReverse.FindAllStringSubmatch(date, -1)
+	groupNames := regexFullDateReverse.SubexpNames()
+
+	var year, month, day string
+
+	for _, m := range match {
+		for i, name := range groupNames {
+			if name == "year" && i < len(m) {
+				year = m[i]
+			} else if name == "month" && i < len(m) {
+				month = m[i]
+			} else if name == "day" && i < len(m) {
+				day = m[i]
+			}
+		}
+	}
+
 	if len(match) == 0 {
 		return date
 	}
 
-	year := match[1]
-	month := match[2]
-	day := match[3]
 	isWithoutDays := len(day) == 0
 	onlyYear := len(month) == 0 && len(day) == 0
 
@@ -164,9 +212,9 @@ func reverseDate(date string) string {
 	case onlyYear:
 		return year
 	case isWithoutDays:
-		return fmt.Sprintf("%s.%s", month, year)
+		return fmt.Sprintf("%s.%s", formatDayOrMonth(month), year)
 	default:
-		return fmt.Sprintf("%s.%s.%s", day, month, year)
+		return fmt.Sprintf("%s.%s.%s", formatDayOrMonth(day), formatDayOrMonth(month), year)
 	}
 }
 
@@ -191,6 +239,8 @@ func formatDayOrMonth(value string) string {
 	formatDate форматирует дату, заменяя любые знаки между элементами даты на "." .
 	Примеры formatDate:
 
+	•	"1 Ноября 1923" -> "01.11.1923"
+	•	"январь 2033" -> "01.2023"
 	•	"11/12/1923" -> "11.12.1923"
 	•	"11👉12👉1923" -> "11.12.1923"
 	•	"11ю12ю1923" -> "11.12.1923"
@@ -250,17 +300,19 @@ func reformatPeriod(text string) WorkPeriod {
 		}
 	}
 
+	separatedDates := separateDates(date)
 	result := []string{}
-	isReverse := isReverseDate(date)
 
-	if isReverse {
-		date := reverseDate(date)
-		result = regexFullDate.FindAllString(date, -1)
-	} else {
-		result = regexFullDate.FindAllString(date, -1)
+	for _, date := range separatedDates {
+		date = formatDate(date)
+		isReverse := isReverseDate(date)
+		if isReverse {
+			date = reverseDate(date)
+		}
+		result = append(result, date)
 	}
 
-	startDate := formatDate(result[0])
+	startDate := result[0]
 
 	if !isValidDate(startDate) {
 		startDate = ""
@@ -269,7 +321,7 @@ func reformatPeriod(text string) WorkPeriod {
 	endDate := fmt.Sprintf("%v", math.Inf(1))
 
 	if len(result) >= 2 {
-		endDate = formatDate(result[1])
+		endDate = result[1]
 
 		if !isValidDate(endDate) {
 			endDate = ""
