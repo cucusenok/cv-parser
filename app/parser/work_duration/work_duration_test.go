@@ -211,7 +211,11 @@ func Test_reformatPeriod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run("reformatPeriod", func(t *testing.T) {
-			result := reformatPeriod(tt.input)
+			result, err := ParsePeriod(tt.input)
+			if err != nil {
+				// Отобрази в тестах появление ошибки
+				t.Errorf("got %v, want %v", result, tt.output)
+			}
 			if !reflect.DeepEqual(result, tt.output) {
 				t.Errorf("got %v, want %v", result, tt.output)
 			}
@@ -230,4 +234,19 @@ func Test_Match(t *testing.T) {
 	//for _, test := range tests {
 	//	assert.Equal(t, test.output, test.input)
 	//}
+}
+
+func Test_separate_date(t *testing.T) {
+	/*
+		•	Примеры:
+			•	"1998.1.11_2000.11.11" => ["1998.1.11", "2000.11.11"]
+			•	"1998.2.12_2000.11" => ["1998.2.12", "2000.11"]
+			•	"1998.3.13_2000" => ["1998.3.13", "13_2000"]
+			•	"11.1998_2000.11.11" => ["11.1998", "2000.11.11"]
+			•	"1998 2000/11/11" => ["1998", "2000/11/11"]
+
+			и тд
+	*/
+
+	// TODO: написать тесты
 }
