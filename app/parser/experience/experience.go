@@ -237,6 +237,7 @@ func ParseExperience(text string) ([]Experience, error) {
 				}
 			}
 			if len(sentencePositions) > 0 {
+				//TODO вынести проценты в константу
 				isTitle := (len(sentencePositions)*100)/len(splitSentence) >= 50 // если совпадений слов >= 50%, считаю, что это заголовок
 
 				// TODO добавить проверку на дату
