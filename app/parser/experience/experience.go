@@ -4,7 +4,6 @@ import (
 	"awesomeProject2/app/spell"
 	"database/sql"
 	"fmt"
-	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -169,22 +168,31 @@ type CVData struct {
 	Mail string `json:"mail"`
 }
 
+func addToDescription(experience *Experience, newDescription string) {
+	if experience.Description != "" {
+		experience.Description += "\n"
+	}
+	experience.Description += newDescription + "."
+}
+
 // test.domain.com -> test___domain___com
 
-func ParseExperience(text string) (*[]Experience, error) {
+func ParseExperience(text string) ([]Experience, error) {
 	err := godotenv.Load()
 
 	spellInstance, err = LoadSpellFromDB()
+
 	skills := []string{}
 	positions := []string{}
 	experienceList := []Experience{}
+	experience := Experience{}
+	currentTitle := ""
 
 	cvData := text
 	cvData = regexCorrentEndOfSentence.ReplaceAllString(cvData, "$1.")
 	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 	lowerCaseText := strings.ToLower(cvData)
-	fmt.Println("\n  cvData: ", cvData, "\n ")
 
 	paragraphs := strings.Split(lowerCaseText, "\n")
 	filteredParagraphs := []string{}
@@ -198,13 +206,14 @@ func ParseExperience(text string) (*[]Experience, error) {
 		}
 	}
 
-	for _, paragraph := range filteredParagraphs {
+	for index, paragraph := range filteredParagraphs {
 		sentences := strings.Split(paragraph, ".")
 		// TODO: обрабатывать домены, из-за split(paragraph, ".") они тоже разбиваются test.com -> [test, com]
 		sentencePositions := []string{}
+
 		for _, sentence := range sentences {
-			combinations := GenerateCombinations(strings.Split(sentence, " "))
-			//foundedPosition := false
+			splitSentence := strings.Split(sentence, " ")
+			combinations := GenerateCombinations(splitSentence)
 
 			for _, combination := range combinations {
 				list, _ := spellInstance.Lookup(combination, spell.SuggestionLevel(spell.LevelClosest))
@@ -216,7 +225,6 @@ func ParseExperience(text string) (*[]Experience, error) {
 					if len(l.Word) < 3 {
 						continue
 					}
-					// fmt.Println("l: ", l.Word, l.WordData["type"])
 					if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
 						skills = append(skills, l.Word)
 					}
@@ -225,36 +233,51 @@ func ParseExperience(text string) (*[]Experience, error) {
 							positions = append(positions, l.Word)
 						}
 						sentencePositions = append(sentencePositions, l.Word)
-						//foundedPosition = true
 					}
 				}
 			}
-			// fmt.Println("sentencePositions: ", sentencePositions)
 			if len(sentencePositions) > 0 {
-				dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
-				if len(dataRange) == 0 {
-					continue
-				}
-				// fmt.Println("dataRange", dataRange)
+				isTitle := (len(sentencePositions)*100)/len(splitSentence) >= 50 // если совпадений слов >= 50%, считаю, что это заголовок
 
-				years := regexYear.FindAllString(dataRange[0], -1)
-				endDate := fmt.Sprintf("%v", math.Inf(1))
-				if len(years) >= 2 {
-					endDate = years[1]
+				// TODO добавить проверку на дату
+				if isTitle {
+					currentTitle = sentence
+					experience.Title += currentTitle
+				} else {
+					addToDescription(&experience, sentence)
 				}
-				experienceList = append(experienceList, Experience{
-					Title:       sentencePositions[0],
-					Start:       years[0],
-					End:         endDate,
-					Description: "",
-				})
 
+				sentencePositions = []string{}
+
+				//if !isTitle {
+				//	description = append(description, sentence)
+				//} else {
+				//	dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
+				//	years := []string{}
+				//	if dataRange != nil {
+				//		years = regexYear.FindAllString(dataRange[0], -1)
+				//		endDate = fmt.Sprintf("%v", math.Inf(1))
+				//		if len(years) >= 2 {
+				//			endDate = years[1]
+				//		}
+				//	}
+				//
+				//	title = sentence
+				//}
+			} else {
+				// TODO добавить проверку на дату
+				addToDescription(&experience, sentence)
 			}
-			//fmt.Println(foundedPosition)
 
+			updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
+			if updateExperienceList {
+				experienceList = append(experienceList, experience)
+				experience = Experience{}
+			}
 		}
 	}
-	fmt.Println("err: ", err)
-	return &experienceList, nil
-
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	return experienceList, nil
 }

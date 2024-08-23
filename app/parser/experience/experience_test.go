@@ -25,20 +25,76 @@ Experience example:
 
 type TestCase struct {
 	input  string
-	output Experience
+	output []Experience
 }
 
 func Test_parseExperience(t *testing.T) {
 	tests := []TestCase{
 		{
-			input: "FOUNDER (START-UP) Nov, 2022 - May, 2023",
-			output: Experience{
-				Start:       "Nov, 2022",
-				End:         "May, 2023",
-				Title:       "FOUNDER (START-UP)",
-				Description: "",
+			input: "typescript reactjs programmer designer",
+			output: []Experience{
+				{
+					Start:       "",
+					End:         "",
+					Title:       "typescript reactjs programmer designer",
+					Description: "",
+				},
 			},
 		},
+		{
+			input: "typescript reactjs programmer designer \n Performed analysis and",
+			output: []Experience{{
+				Start:       "",
+				End:         "",
+				Title:       "typescript reactjs programmer designer",
+				Description: "performed analysis and.",
+			}},
+		},
+		{
+			input: "typescript reactjs programmer designer \n Performed analysis and \n",
+			output: []Experience{{
+				Start:       "",
+				End:         "",
+				Title:       "typescript reactjs programmer designer",
+				Description: "performed analysis and.",
+			}},
+		},
+		{
+			input: "Performed analysis and \n typescript reactjs programmer designer",
+			output: []Experience{{
+				Start:       "",
+				End:         "",
+				Title:       "typescript reactjs programmer designer",
+				Description: "performed analysis and.",
+			}},
+		},
+		{
+			input: "typescript reactjs programmer designer \n Performed and",
+			output: []Experience{{
+				Start:       "",
+				End:         "",
+				Title:       "typescript reactjs programmer designer",
+				Description: "performed and.",
+			}},
+		},
+		{
+			input: "typescript reactjs programmer designer \n Description 1 \n Description 2",
+			output: []Experience{{
+				Start:       "",
+				End:         "",
+				Title:       "typescript reactjs programmer designer",
+				Description: "description 1.\ndescription 2.",
+			}},
+		},
+		//{
+		//	input: "FOUNDER (START-UP)\n\nNov, 2022 - May, 2023",
+		//	output: Experience{
+		//		Start:       "Nov, 2022",
+		//		End:         "May, 2023",
+		//		Title:       "FOUNDER (START-UP)",
+		//		Description: "",
+		//	},
+		//},
 	}
 
 	for _, tt := range tests {
