@@ -6,53 +6,59 @@ import (
 	"testing"
 )
 
-func Test_GenerateCombinations(t *testing.T) {
+/*
+Experience example:
+
+"experience": [
+   {
+	 "date_start": "06-2019",
+	 "date_end": "06-2020",
+	 "place": "google",
+	 "title": "SENIOR FULL STACK ENGINEER"
+	 "position": ["ENGINEER"],
+	 "skills": ["FULL STACK"],
+	 "level": ["senior"],
+	 "description": "Performed analysis and problem-solving for 3GPP, 4G/LTE, 5G, and O-RAN..."
+   }
+],
+*/
+
+type TestCase struct {
+	input  string
+	output Experience
+}
+
+func Test_parseExperience(t *testing.T) {
 	tests := []TestCase{
 		{
-			input: "FOUNDER (START-UP)\n\n\t Nov, 2022 - May, 2023",
-			output: []OutputData{
-				{
-					Start:    "2020 nov",
-					End:      "2023 may",
-					Position: "",
-				},
+			input: "FOUNDER (START-UP) Nov, 2022 - May, 2023",
+			output: Experience{
+				Start:       "Nov, 2022",
+				End:         "May, 2023",
+				Title:       "FOUNDER (START-UP)",
+				Description: "",
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run("generateStrings", func(t *testing.T) {
-			result := parser.GenerateCombinations(tt.input)
+		t.Run("parseExperience", func(t *testing.T) {
+			result, err := ParseExperience(tt.input)
+			if err != nil {
+				// Отобрази в тестах появление ошибки
+				t.Errorf("got %v, want %v", result, tt.output)
+			}
 			if !reflect.DeepEqual(result, tt.output) {
-				t.Errorf("got %v, want %v", result, tt.expected)
+				t.Errorf("got %v, want %v", result, tt.output)
 			}
 		})
 	}
-
 }
 
 type OutputData struct {
 	Start    string `json:"start"`
 	End      string `json:"end"`
 	Position string `json:"position"`
-}
-
-type TestCase struct {
-	input  string
-	output []OutputData
-}
-
-var tests = []TestCase{
-	{
-		input: "FOUNDER (START-UP)\n\n\t Nov, 2022 - May, 2023",
-		output: []OutputData{
-			{
-				Start:    "2020 nov",
-				End:      "2023 may",
-				Position: "",
-			},
-		},
-	},
 }
 
 func Test_Match(t *testing.T) {

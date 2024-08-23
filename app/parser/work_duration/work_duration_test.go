@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_reformatPeriod(t *testing.T) {
+func Test_parsePeriod(t *testing.T) {
 	tests := []TestCase{
 		// Not date
 		{
@@ -210,7 +210,7 @@ func Test_reformatPeriod(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run("reformatPeriod", func(t *testing.T) {
+		t.Run("parsePeriod", func(t *testing.T) {
 			result, err := ParsePeriod(tt.input)
 			if err != nil {
 				// Отобрази в тестах появление ошибки
