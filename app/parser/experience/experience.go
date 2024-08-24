@@ -14,6 +14,8 @@ import (
 
 var spellInstance *spell.Spell
 
+const MATCH_PERCENTAGE = 50
+
 /*
 	// Мы нашли должность, и понимает что должность занимает 90% строки
 	Co-Founder, Chief Design OfficerCo-Founder, Chief Design Officer
@@ -33,8 +35,9 @@ var (
 )
 
 type Experience struct {
-	Start       string `json:"start_date"`
-	End         string `json:"end_date"`
+	//Start       string `json:"start_date"`
+	//End         string `json:"end_date"`
+	Date        string `json:"date"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
@@ -172,7 +175,7 @@ func addToDescription(experience *Experience, newDescription string) {
 	if experience.Description != "" {
 		experience.Description += "\n"
 	}
-	experience.Description += newDescription + "."
+	experience.Description += newDescription
 }
 
 // test.domain.com -> test___domain___com
@@ -209,6 +212,7 @@ func ParseExperience(text string) ([]Experience, error) {
 	for index, paragraph := range filteredParagraphs {
 		sentences := strings.Split(paragraph, ".")
 		// TODO: обрабатывать домены, из-за split(paragraph, ".") они тоже разбиваются test.com -> [test, com]
+		// TODO: обрабатывать числа формата nn.nn => 2.2 и тд
 		sentencePositions := []string{}
 
 		for _, sentence := range sentences {
@@ -237,17 +241,14 @@ func ParseExperience(text string) ([]Experience, error) {
 				}
 			}
 			if len(sentencePositions) > 0 {
-				//TODO вынести проценты в константу
-				isTitle := (len(sentencePositions)*100)/len(splitSentence) >= 50 // если совпадений слов >= 50%, считаю, что это заголовок
+				isTitle := (len(sentencePositions)*100)/len(splitSentence) >= MATCH_PERCENTAGE // если совпадений слов >= MATCH_PERCENTAGE(50%), считаю, что это заголовок
 
 				// TODO добавить проверку на дату
 				if isTitle {
 					currentTitle = sentence
-					experience.Title += currentTitle
 				} else {
 					addToDescription(&experience, sentence)
 				}
-
 				sentencePositions = []string{}
 
 				//if !isTitle {
@@ -262,18 +263,27 @@ func ParseExperience(text string) ([]Experience, error) {
 				//			endDate = years[1]
 				//		}
 				//	}
-				//
 				//	title = sentence
 				//}
 			} else {
-				// TODO добавить проверку на дату
-				addToDescription(&experience, sentence)
+				dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
+				isDate := dataRange != nil
+				if isDate {
+					experience.Date = sentence
+				} else {
+					addToDescription(&experience, sentence)
+				}
 			}
 
-			updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
-			if updateExperienceList {
-				experienceList = append(experienceList, experience)
-				experience = Experience{}
+			if len(currentTitle) > 0 {
+				if len(experience.Title) == 0 {
+					experience.Title = currentTitle
+				}
+				updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
+				if updateExperienceList {
+					experienceList = append(experienceList, experience)
+					experience = Experience{}
+				}
 			}
 		}
 	}
