@@ -168,7 +168,7 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 	return s, nil
 }
 
-type Experience struct {
+type ExperienceString struct {
 	Title       string `json:"title"`
 	Name        string `json:"name"`
 	Start       string `json:"start"`
@@ -185,8 +185,8 @@ type Company struct {
 }
 
 type CVData struct {
-	Experience []Experience `json:"experience"`
-	Company    []Company    `json:"company"`
+	Experience []ExperienceString `json:"experience"`
+	Company    []Company          `json:"company"`
 	// Links      []string     `json:"links"`
 	Mail string `json:"mail"`
 }
@@ -329,7 +329,7 @@ func Parse(text string) {
 	// 	}
 	// }
 
-	experienceList := []Experience{}
+	experienceList := []ExperienceString{}
 
 	fmt.Println("\n ======================================= filteredParagraphs ===================================================\n ")
 
@@ -441,7 +441,7 @@ func Parse(text string) {
 		if len(years) >= 2 {
 			endDate = years[1]
 		}
-		experienceList = append(experienceList, Experience{
+		experienceList = append(experienceList, ExperienceString{
 			Title:       section[0],
 			Name:        sentencePositions,
 			Start:       years[0],

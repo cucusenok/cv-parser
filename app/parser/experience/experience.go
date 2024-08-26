@@ -34,7 +34,7 @@ var (
 	regexCorrentEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
 )
 
-type Experience struct {
+type ExperienceString struct {
 	//Start       string `json:"start_date"`
 	//End         string `json:"end_date"`
 	Date        string `json:"date"`
@@ -166,12 +166,12 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 }
 
 type CVData struct {
-	Experience []Experience `json:"experience"`
+	Experience []ExperienceString `json:"experience"`
 	// Links      []string     `json:"links"`
 	Mail string `json:"mail"`
 }
 
-func addToDescription(experience *Experience, newDescription string) {
+func addToDescription(experience *ExperienceString, newDescription string) {
 	if experience.Description != "" {
 		experience.Description += "\n"
 	}
@@ -180,15 +180,15 @@ func addToDescription(experience *Experience, newDescription string) {
 
 // test.domain.com -> test___domain___com
 
-func ParseExperience(text string) ([]Experience, error) {
+func ParseExperience(text string) ([]ExperienceString, error) {
 	err := godotenv.Load()
 
 	spellInstance, err = LoadSpellFromDB()
 
 	skills := []string{}
 	positions := []string{}
-	experienceList := []Experience{}
-	experience := Experience{}
+	experienceList := []ExperienceString{}
+	experience := ExperienceString{}
 	currentTitle := ""
 
 	cvData := text
@@ -282,7 +282,7 @@ func ParseExperience(text string) ([]Experience, error) {
 				updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
 				if updateExperienceList {
 					experienceList = append(experienceList, experience)
-					experience = Experience{}
+					experience = ExperienceString{}
 				}
 			}
 		}
