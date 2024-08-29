@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	regexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
+	RegexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
-	regexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
+	RegexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`(?P<year>(19|20)\d{2})(\D{1}(?P<month>(\d{1,2}|(?i)[a-zа-я]+)))(\D{1}(?P<day>\d{1,2}))?`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 	monthPattern             *regexp.Regexp = regexp.MustCompile(`(?i)[a-zа-я]+`)
@@ -54,8 +54,8 @@ var months = []Month{
 	{MonthRoot: "дек", Index: 12},
 }
 
-const TYPE_DATE_NORMAL = "normal"   // 20.12.2024
-const TYPE_DATE_REVERSE = "reverse" // 2024.12.20
+const TYPE_DATE_NORMAL = "normalDate"   // 20.12.2024
+const TYPE_DATE_REVERSE = "reverseDate" // 2024.12.20
 
 /*
 separateDates Функция разделяющая даты.
@@ -69,11 +69,11 @@ separateDates Функция разделяющая даты.
 
 и тд
 */
-func separateDates(date string) []string {
-	matches := regexDates.FindAllStringSubmatch(date, -1)
+func SeparateDates(date string) []string {
+	matches := RegexDates.FindAllStringSubmatch(date, -1)
 	// тут мы ожидаем группы normal или reverse
 	// и если одна из этих груп найдена - разбиваем по разделителю
-	groupNames := regexDates.SubexpNames()
+	groupNames := RegexDates.SubexpNames()
 	result := []string{}
 
 	for _, match := range matches {
@@ -282,8 +282,8 @@ func formatDate(value string) string {
 	return fmt.Sprintf("%s.%s.%s", formatDayOrMonth(day), formatDayOrMonth(month), year)
 }
 
-func isMatchDate(text string) bool {
-	return regexDateRangeExcludeEnd.MatchString(text)
+func IsMatchDate(text string) bool {
+	return RegexDateRangeExcludeEnd.MatchString(text)
 }
 
 func isReverseDate(text string) bool {
@@ -292,14 +292,14 @@ func isReverseDate(text string) bool {
 
 func ParsePeriod(text string) (*WorkPeriod, error) {
 	date := strings.TrimSpace(text)
-	if date == "" || !isMatchDate(date) {
+	if date == "" || !IsMatchDate(date) {
 		return &WorkPeriod{
 			DateStart: "",
 			DateEnd:   "",
 		}, nil
 	}
 
-	separatedDates := separateDates(date)
+	separatedDates := SeparateDates(date)
 	var result []string
 	/*
 		Если есть возможность привести дату к единому формату - это нужно делать чтобы дальше
