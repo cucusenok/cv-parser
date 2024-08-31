@@ -168,6 +168,19 @@ func isUppercase(word string) bool {
 	return hasLetter
 }
 
+/*
+Функция calculateAverageLength возвращает среднее значение длины строки исходя из среза, который пробрасывается в аргументы
+*/
+
+func calculateAverageLength(data []SentenceData) int {
+	totalLength := 0
+	for _, item := range data {
+		totalLength += item.Length
+	}
+	averageLength := totalLength / len(data)
+	return averageLength
+}
+
 func ParseCV(text string) ([]ExperienceString, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
@@ -180,6 +193,8 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 
 	jobTitles := []JobTitles{}
+
+	var averageLength int
 
 	paragraphs := strings.Split(cvData, "\n")
 	filteredParagraphs := []string{}
@@ -258,6 +273,8 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		})
 	}
 
+	averageLength = calculateAverageLength(sentences)
+
 	for _, sentence := range sentences {
 		jobTitle := JobTitles{}
 		if len(sentence.Positions) > 0 && (((len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level)) * 100 / sentence.Length) >= 50) {
@@ -272,5 +289,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
+
+	fmt.Println("averageLength: ", averageLength)
 	return experienceList, nil
 }
