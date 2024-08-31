@@ -27,17 +27,22 @@ type ExperienceString struct {
 	Description string `json:"description"`
 }
 
+type JobTitles struct {
+	Sentence string `json:"sentence"`
+	Index    int    `json:"index"`
+}
+
 type SentenceData struct {
-	Index          int      `json:"index"`
-	Length         int      `json:"length"`
-	Commas         int      `json:"commas"`
-	Words          []string `json:"words"`
-	Skills         []string `json:"skills"`
-	Positions      []string `json:"position"`
-	Level          []string `json:"level"`
-	Date           string   `json:"date"`
-	Sentence       string   `json:"sentence"`
-	UpperCaseWords []string `json:"upperCaseWords"`
+	Index          int                       `json:"index"`
+	Length         int                       `json:"length"`
+	Commas         int                       `json:"commas"`
+	Words          []string                  `json:"words"`
+	Skills         []string                  `json:"skills"`
+	Positions      []string                  `json:"position"`
+	Level          []string                  `json:"level"`
+	Date           *work_duration.WorkPeriod `json:"date"`
+	Sentence       string                    `json:"sentence"`
+	UpperCaseWords []string                  `json:"upperCaseWords"`
 }
 
 func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) error {
@@ -174,6 +179,8 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 
+	jobTitles := []JobTitles{}
+
 	paragraphs := strings.Split(cvData, "\n")
 	filteredParagraphs := []string{}
 
@@ -186,18 +193,20 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	}
 
 	for index, paragraph := range filteredParagraphs {
-		date := ""
+		date := &work_duration.WorkPeriod{
+			DateStart: "",
+			DateEnd:   "",
+		}
+
 		skills := []string{}
 		positions := []string{}
 		levels := []string{}
 		upperCaseWords := []string{}
-
 		combinations := parser.GenerateCombinations(strings.Split(paragraph, " "))
-
 		words := strings.Fields(paragraph)
 
 		for _, combination := range combinations {
-			list, _ := spellInstance.Lookup(combination, spell.SuggestionLevel(spell.LevelClosest))
+			list, _ := spellInstance.Lookup(strings.ToLower(combination), spell.SuggestionLevel(spell.LevelClosest))
 			if len(list) == 0 {
 				continue
 			}
@@ -231,9 +240,8 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		dataRange := work_duration.RegexDateRangeExcludeEnd.FindAllString(paragraph, -1)
 		isDate := dataRange != nil
 		if isDate {
-			test, _ := work_duration.ParsePeriod(paragraph)
-			fmt.Println("test: ", test)
-			date = paragraph
+			parsedDate, _ := work_duration.ParsePeriod(paragraph)
+			date = parsedDate
 		}
 
 		sentences = append(sentences, SentenceData{
@@ -248,6 +256,17 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			Sentence:       paragraph,
 			UpperCaseWords: upperCaseWords,
 		})
+	}
+
+	for _, sentence := range sentences {
+		jobTitle := JobTitles{}
+		if len(sentence.Positions) > 0 && (((len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level)) * 100 / sentence.Length) >= 50) {
+			jobTitle = JobTitles{
+				Sentence: sentence.Sentence,
+				Index:    sentence.Index,
+			}
+			jobTitles = append(jobTitles, jobTitle)
+		}
 	}
 
 	if err != nil {

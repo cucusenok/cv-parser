@@ -145,7 +145,7 @@ func Test_parseExperience(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run("parseExperience", func(t *testing.T) {
+		t.Run("ParseCV", func(t *testing.T) {
 			result, err := ParseCV(tt.input)
 			if err != nil {
 				// Отобрази в тестах появление ошибки

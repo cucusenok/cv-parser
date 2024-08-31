@@ -212,8 +212,8 @@ func Test_parsePeriod(t *testing.T) {
 		{
 			input: "june, 2019 - june, 2020",
 			output: WorkPeriod{
-				DateStart: "01.2019",
-				DateEnd:   "01.2020",
+				DateStart: "06.2019",
+				DateEnd:   "06.2020",
 			},
 		},
 	}

@@ -11,7 +11,8 @@ import (
 var (
 	RegexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
-	RegexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
+	RegexDatesOld            *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
+	RegexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1,3}\d{1,2}|(?i)[a-zа-я]+)?(\D{1,3}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1,3})?((\d{1,2}|(?i)[a-zа-я]+)\D{1,3})?(19|20)\d{2})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`(?P<year>(19|20)\d{2})(\D{1}(?P<month>(\d{1,2}|(?i)[a-zа-я]+)))(\D{1}(?P<day>\d{1,2}))?`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 	monthPattern             *regexp.Regexp = regexp.MustCompile(`(?i)[a-zа-я]+`)
@@ -250,25 +251,32 @@ func formatDayOrMonth(value string) string {
 */
 
 func formatDate(value string) string {
-	result := replaceDateWithMonthNumber(value)
-	result = regexNonDigit.ReplaceAllStringFunc(result, func(s string) string {
+	formattedDate := replaceDateWithMonthNumber(value)
+	formattedDate = regexNonDigit.ReplaceAllStringFunc(formattedDate, func(s string) string {
 		return "."
 	})
-	date := strings.Split(result, ".")
+	date := strings.Split(formattedDate, ".")
+	result := []string{}
+
+	for _, d := range date {
+		if d != "" {
+			result = append(result, d)
+		}
+	}
 
 	var year string
 	var month string
 	var day string
 
-	if len(date) == 3 {
-		year = date[2]
-		month = date[1]
-		day = date[0]
-	} else if len(date) == 2 {
-		year = date[1]
-		month = date[0]
+	if len(result) == 3 {
+		year = result[2]
+		month = result[1]
+		day = result[0]
+	} else if len(result) == 2 {
+		year = result[1]
+		month = result[0]
 	} else {
-		year = date[0]
+		year = result[0]
 	}
 
 	isWithoutDays := len(day) == 0
