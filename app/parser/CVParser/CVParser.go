@@ -34,7 +34,7 @@ type JobTitles struct {
 
 type SentenceData struct {
 	Index          int                       `json:"index"`
-	Length         int                       `json:"length"`
+	WordsCount     int                       `json:"wordsCount"`
 	Commas         int                       `json:"commas"`
 	Words          []string                  `json:"words"`
 	Skills         []string                  `json:"skills"`
@@ -149,6 +149,53 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 }
 
 /*
+Функция splitByDate разбивает строку на несколько частей относительно даты.
+Пример:
+	Вход: "JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance"
+	Выход: ["JUNIOR FULL STACK DEVELOPER", "Jan, 2017 - June, 2019", "Private practice / freelance"]
+*/
+
+// TODO сделать проверку на месяцы из бд. Баг: JUNIOR меняется на 06 из-за проверки на корень слова
+
+func splitByDate(text string) []string {
+	formattedText := work_duration.ReplaceDateWithMonthNumber(text)
+	matches := work_duration.RegexDatesWithoutDigit.FindAllStringSubmatch(formattedText, -1)
+	groupNames := work_duration.RegexDatesWithoutDigit.SubexpNames()
+	dates := []string{}
+
+	for _, match := range matches {
+		for i, name := range groupNames {
+			if len(name) == 0 {
+				continue
+			}
+			if (name == work_duration.TYPE_DATE_REVERSE || name == work_duration.TYPE_DATE_NORMAL) && i < len(match) && len(match[i]) > 0 {
+				dates = append(dates, match[i])
+			}
+		}
+	}
+	if len(matches) == 0 {
+		return []string{text}
+	}
+
+	var date string
+	var beforeDate string
+	var afterDate string
+
+	if len(dates) == 0 || len(dates) > 2 {
+		return []string{text}
+	} else if len(dates) == 2 {
+		date = strings.TrimSpace(formattedText[strings.Index(formattedText, dates[0]) : strings.Index(formattedText, dates[1])+len(dates[1])])
+	} else {
+		date = strings.TrimSpace(formattedText[strings.Index(formattedText, dates[0]):])
+	}
+
+	beforeDate = strings.TrimSpace(formattedText[:strings.Index(formattedText, date)])
+	afterDate = strings.TrimSpace(formattedText[strings.Index(formattedText, date)+len(date):])
+
+	return []string{beforeDate, date, afterDate}
+}
+
+/*
 Функция isUppercase проверяет написано ли слово в верхнем регистре
 */
 func isUppercase(word string) bool {
@@ -175,7 +222,7 @@ func isUppercase(word string) bool {
 func calculateAverageLength(data []SentenceData) int {
 	totalLength := 0
 	for _, item := range data {
-		totalLength += item.Length
+		totalLength += item.WordsCount
 	}
 	averageLength := totalLength / len(data)
 	return averageLength
@@ -186,6 +233,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	spellInstance, err = LoadSpellFromDB()
 	experienceList := []ExperienceString{}
 	sentences := []SentenceData{}
+	titleSentences := []SentenceData{}
 
 	cvData := text
 	cvData = regexCorrectEndOfSentence.ReplaceAllString(cvData, "$1.")
@@ -193,8 +241,9 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 
 	jobTitles := []JobTitles{}
+	sentencesWithDates := []SentenceData{}
 
-	var averageLength int
+	var averageWordsCount int
 
 	paragraphs := strings.Split(cvData, "\n")
 	filteredParagraphs := []string{}
@@ -203,7 +252,18 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	for _, paragraph := range paragraphs {
 		trimmedParagraph := strings.TrimSpace(paragraph) // Убираем лишние пробелы
 		if trimmedParagraph != "" {
-			filteredParagraphs = append(filteredParagraphs, trimmedParagraph)
+			dataRange := work_duration.RegexDateRangeExcludeEnd.FindAllString(trimmedParagraph, -1)
+			isDate := dataRange != nil
+			if isDate {
+				splitParagraphs := splitByDate(trimmedParagraph)
+				for _, splitParagraph := range splitParagraphs {
+					if len(splitParagraph) > 0 {
+						filteredParagraphs = append(filteredParagraphs, splitParagraph)
+					}
+				}
+			} else {
+				filteredParagraphs = append(filteredParagraphs, trimmedParagraph)
+			}
 		}
 	}
 
@@ -222,22 +282,18 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 		for _, combination := range combinations {
 			list, _ := spellInstance.Lookup(strings.ToLower(combination), spell.SuggestionLevel(spell.LevelClosest))
-			if len(list) == 0 {
+
+			if len(list) > 0 && list[0].Distance > 3 {
 				continue
 			}
+
 			for _, l := range list {
-				/*
-					TODO некорректно находит скилл.
-					Вход: middle Full Stack Developer 7+ YEARS OF EXPERIENCE
-					Выход: ["Full Stack", "C++"]
-				*/
 				if l.WordData["type"] == "skill" && !parser.ContainsItem(skills, l.Word) {
 					skills = append(skills, l.Word)
 				}
 				if l.WordData["type"] == "position" && !parser.ContainsItem(positions, l.Word) {
 					positions = append(positions, l.Word)
 				}
-				// TODO добавить "Senior" в бд
 				if l.WordData["type"] == "level" && !parser.ContainsItem(levels, l.Word) {
 					levels = append(levels, l.Word)
 				}
@@ -261,7 +317,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 		sentences = append(sentences, SentenceData{
 			Index:          index,
-			Length:         len(strings.Fields(paragraph)),
+			WordsCount:     len(strings.Fields(paragraph)),
 			Words:          strings.Fields(paragraph),
 			Commas:         strings.Count(paragraph, ","),
 			Skills:         skills,
@@ -273,23 +329,66 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		})
 	}
 
-	averageLength = calculateAverageLength(sentences)
+	averageWordsCount = calculateAverageLength(sentences)
 
 	for _, sentence := range sentences {
 		jobTitle := JobTitles{}
-		if len(sentence.Positions) > 0 && (((len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level)) * 100 / sentence.Length) >= 50) {
+		// Если в строке Skills + Positions + Level занимают >= 50% строки, тогда считаю, что это может быть jobTitle.
+		if len(sentence.Positions) > 0 &&
+			(((len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level)) * 100 / sentence.WordsCount) >= 50) &&
+			sentence.WordsCount < averageWordsCount {
 			jobTitle = JobTitles{
 				Sentence: sentence.Sentence,
 				Index:    sentence.Index,
 			}
 			jobTitles = append(jobTitles, jobTitle)
 		}
+		if len(sentence.Date.DateStart) > 0 {
+			sentencesWithDates = append(sentencesWithDates, sentence)
+		}
+	}
+
+	interval := 2
+
+	for _, jobTitle := range jobTitles {
+		startIndex := jobTitle.Index - interval
+		if startIndex < 0 {
+			startIndex = 0
+		}
+
+		endIndex := jobTitle.Index + interval
+		if endIndex >= len(sentences) {
+			endIndex = len(sentences) - 1
+		}
+
+		dateFound := false
+		for i := startIndex; i <= endIndex; i++ {
+			if sentences[i].Date != nil &&
+				sentences[i].Date.DateStart != "" {
+				dateFound = true
+				break
+			}
+		}
+
+		if dateFound {
+			titleSentences = append(titleSentences, sentences[jobTitle.Index])
+		}
+	}
+
+	upperCasingTitles := 0
+	for _, titleSentence := range titleSentences {
+		if titleSentence.WordsCount == len(titleSentence.UpperCaseWords) {
+			upperCasingTitles++
+		}
+	}
+
+	// TODO добавить проверку на заголовки в верхнем регистре
+	if upperCasingTitles == 0 {
 	}
 
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
 
-	fmt.Println("averageLength: ", averageLength)
 	return experienceList, nil
 }

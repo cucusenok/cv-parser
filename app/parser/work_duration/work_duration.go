@@ -11,11 +11,11 @@ import (
 var (
 	RegexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
-	RegexDatesOld            *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1}\d{1,2}|(?i)[a-zа-я]+)?(\D{1}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1})?((\d{1,2}|(?i)[a-zа-я]+)\D{1})?(19|20)\d{2})`)
 	RegexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1,3}\d{1,2}|(?i)[a-zа-я]+)?(\D{1,3}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1,3})?((\d{1,2}|(?i)[a-zа-я]+)\D{1,3})?(19|20)\d{2})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`(?P<year>(19|20)\d{2})(\D{1}(?P<month>(\d{1,2}|(?i)[a-zа-я]+)))(\D{1}(?P<day>\d{1,2}))?`)
 	regexNonDigit            *regexp.Regexp = regexp.MustCompile(`\D`)
 	monthPattern             *regexp.Regexp = regexp.MustCompile(`(?i)[a-zа-я]+`)
+	RegexDatesWithoutDigit   *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1,3}\d{1,2})?(\D{1,3}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1,3})?((\d{1,2})\D{1,3})?(19|20)\d{2})`)
 )
 
 type WorkPeriod struct {
@@ -113,7 +113,7 @@ func convertMonthToNumber(month string) int {
 }
 
 /*
-replaceMonthWithNumber Функция для замены текстового месяца на числовой.
+ReplaceDateWithMonthNumber Функция для замены текстового месяца на числовой.
 Если совпадений не найдено, возвращаем исходную строку.
 
 •	Примеры строковых дат:
@@ -122,7 +122,7 @@ replaceMonthWithNumber Функция для замены текстового �
 •	"1 November 1923" => "1 11 1923"
 •	"Nov 1923" => "11 1923"
 */
-func replaceDateWithMonthNumber(date string) string {
+func ReplaceDateWithMonthNumber(date string) string {
 	replacedStr := monthPattern.ReplaceAllStringFunc(date, func(match string) string {
 		index := strconv.Itoa(convertMonthToNumber(match))
 		if index != "0" {
@@ -236,7 +236,7 @@ func formatDayOrMonth(value string) string {
 }
 
 /*
-	formatDate форматирует дату, заменяя любые знаки между элементами даты на "." .
+	FormatDate форматирует дату, заменяя любые знаки между элементами даты на "." .
 	Примеры formatDate:
 
 	•	"1 Ноября 1923" -> "01.11.1923"
@@ -250,8 +250,8 @@ func formatDayOrMonth(value string) string {
 
 */
 
-func formatDate(value string) string {
-	formattedDate := replaceDateWithMonthNumber(value)
+func FormatDate(value string) string {
+	formattedDate := ReplaceDateWithMonthNumber(value)
 	formattedDate = regexNonDigit.ReplaceAllStringFunc(formattedDate, func(s string) string {
 		return "."
 	})
@@ -314,7 +314,7 @@ func ParsePeriod(text string) (*WorkPeriod, error) {
 		в коде не плодить isReverseDate(datePart)
 	*/
 	for _, datePart := range separatedDates {
-		datePart = formatDate(datePart)
+		datePart = FormatDate(datePart)
 		isReverse := isReverseDate(datePart)
 		if isReverse {
 			datePart = reverseDate(datePart)
