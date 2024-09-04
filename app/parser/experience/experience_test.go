@@ -1,7 +1,7 @@
 package experience
 
 import (
-	"awesomeProject2/app/parser"
+	"cv-parser/parser"
 	"reflect"
 	"strings"
 	"testing"

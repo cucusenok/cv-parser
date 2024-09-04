@@ -1,9 +1,9 @@
 package CVParser
 
 import (
-	"awesomeProject2/app/parser"
-	"awesomeProject2/app/parser/work_duration"
-	"awesomeProject2/app/spell"
+	"cv-parser/parser"
+	"cv-parser/parser/work_duration"
+	"cv-parser/spell"
 	"database/sql"
 	"fmt"
 	"os"
@@ -19,6 +19,8 @@ var spellInstance *spell.Spell
 
 var (
 	regexCorrectEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
+	multipleSpaceRegex        *regexp.Regexp = regexp.MustCompile(`\s+`)
+	specialCharsetRegex       *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9 ]+")
 )
 
 // TODO добавить place
@@ -302,9 +304,23 @@ func collectDataInRange(sentences, titleSentences []SentenceData) []ExperienceSt
 	return result
 }
 
+func IsAllowedDistanceForWord(suggest spell.Suggestion) bool {
+	length := len(suggest.Word)
+	if length < 6 {
+		return suggest.Distance == 0
+	}
+	if length < 10 {
+		return suggest.Distance < 2
+	}
+	return suggest.Distance < 3
+}
+
 func ParseCV(text string) ([]ExperienceString, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
+	if err != nil {
+		return nil, err
+	}
 	experienceList := []ExperienceString{}
 	sentences := []SentenceData{}
 	titleSentences := []SentenceData{}
@@ -314,34 +330,19 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 
-	jobTitles := []JobTitles{}
+	possibleJobTitles := []JobTitles{}
 	sentencesWithDates := []SentenceData{}
 
 	var averageWordsCount int
 
 	paragraphs := strings.Split(cvData, "\n")
-	filteredParagraphs := []string{}
 
-	// фильтруем строки, убирая пустые
-	for _, paragraph := range paragraphs {
+	for index, paragraph := range paragraphs {
 		trimmedParagraph := strings.TrimSpace(paragraph) // Убираем лишние пробелы
-		if trimmedParagraph != "" {
-			dataRange := work_duration.RegexDateRangeExcludeEnd.FindAllString(trimmedParagraph, -1)
-			isDate := dataRange != nil
-			if isDate {
-				splitParagraphs := splitByDate(trimmedParagraph)
-				for _, splitParagraph := range splitParagraphs {
-					if len(splitParagraph) > 0 {
-						filteredParagraphs = append(filteredParagraphs, splitParagraph)
-					}
-				}
-			} else {
-				filteredParagraphs = append(filteredParagraphs, trimmedParagraph)
-			}
+		if trimmedParagraph == "" {
+			continue
 		}
-	}
 
-	for index, paragraph := range filteredParagraphs {
 		date := &work_duration.WorkPeriod{
 			DateStart: "",
 			DateEnd:   "",
@@ -352,12 +353,12 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		levels := []string{}
 		upperCaseWords := []string{}
 		combinations := parser.GenerateCombinations(strings.Split(paragraph, " "))
-		words := strings.Fields(paragraph)
+		words := strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))
 
 		for _, combination := range combinations {
 			list, _ := spellInstance.Lookup(strings.ToLower(combination), spell.SuggestionLevel(spell.LevelClosest))
 
-			if len(list) > 0 && list[0].Distance > 3 {
+			if len(list) > 0 && !IsAllowedDistanceForWord(list[0]) {
 				continue
 			}
 
@@ -391,8 +392,8 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 		sentences = append(sentences, SentenceData{
 			Index:          index,
-			WordsCount:     len(strings.Fields(paragraph)),
-			Words:          strings.Fields(paragraph),
+			WordsCount:     len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
+			Words:          strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, "")),
 			Commas:         strings.Count(paragraph, ","),
 			Skills:         skills,
 			Positions:      positions,
@@ -407,15 +408,35 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 	for _, sentence := range sentences {
 		jobTitle := JobTitles{}
-		// Если в строке Skills + Positions + Level занимают >= 50% строки, тогда считаю, что это может быть jobTitle.
+		if sentence.Sentence == "JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance" {
+			fmt.Println(sentence)
+		}
+
+		// Процент полезной нагрузки в предложении
+		payloadPercent := (len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level))
+		if sentence.Date.DateStart != "" || sentence.Date.DateEnd != "" {
+			// Добавим больше вероятности строкам с датами
+			// TODO: У тебя сейчас "Jan, 2017 - June, 2019" - разобьется на 2017 и 2019 - что с точки зрения подсчета не верно
+			// нужно "Jan 2017" и "June 2019" а потом сделать:
+			// payloadPercent = payloadPercent + len(strings.split(sentence.Date.DateStart, " ")) + len(strings.split(sentence.Date.DateEnd, " "))
+			payloadPercent = payloadPercent + 4
+		}
+		payloadPercent = (payloadPercent * 100) / sentence.WordsCount
+		maxWordCountParam := 7
+
+		// Если в строке Skills + Positions + Level
+		// занимают >= 50% строки и короче средней длины строки
+		// занимает 80% строки но больше maxWordCountParam и тогда может быть длинее averageWordsCount
+		// тогда считаем, что это может быть jobTitle
 		if len(sentence.Positions) > 0 &&
-			(((len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level)) * 100 / sentence.WordsCount) >= 50) &&
-			sentence.WordsCount < averageWordsCount {
+			(payloadPercent >= 50) &&
+			(sentence.WordsCount < averageWordsCount ||
+				(sentence.WordsCount > maxWordCountParam) && (payloadPercent > 80) && (sentence.WordsCount-averageWordsCount < 6)) {
 			jobTitle = JobTitles{
 				Sentence: sentence.Sentence,
 				Index:    sentence.Index,
 			}
-			jobTitles = append(jobTitles, jobTitle)
+			possibleJobTitles = append(possibleJobTitles, jobTitle)
 		}
 		if len(sentence.Date.DateStart) > 0 {
 			sentencesWithDates = append(sentencesWithDates, sentence)
@@ -424,13 +445,13 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 	interval := 2
 
-	for _, jobTitle := range jobTitles {
-		startIndex := jobTitle.Index - interval
+	for _, possibleJobTitle := range possibleJobTitles {
+		startIndex := possibleJobTitle.Index - interval
 		if startIndex < 0 {
 			startIndex = 0
 		}
 
-		endIndex := jobTitle.Index + interval
+		endIndex := possibleJobTitle.Index + interval
 		if endIndex >= len(sentences) {
 			endIndex = len(sentences) - 1
 		}
@@ -445,7 +466,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		}
 
 		if dateFound {
-			titleSentences = append(titleSentences, sentences[jobTitle.Index])
+			titleSentences = append(titleSentences, sentences[possibleJobTitle.Index])
 		}
 	}
 

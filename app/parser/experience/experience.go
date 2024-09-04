@@ -1,8 +1,8 @@
 package experience
 
 import (
-	"awesomeProject2/app/parser/work_duration"
-	"awesomeProject2/app/spell"
+	"cv-parser/parser/work_duration"
+	"cv-parser/spell"
 	"database/sql"
 	"fmt"
 	"os"

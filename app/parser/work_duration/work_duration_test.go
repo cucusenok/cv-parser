@@ -1,7 +1,7 @@
 package work_duration
 
 import (
-	"awesomeProject2/app/parser"
+	"cv-parser/parser"
 	"reflect"
 	"testing"
 )

@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"awesomeProject2/app/spell"
+	"cv-parser/spell"
 	"database/sql"
 	"fmt"
 	"math"
@@ -168,6 +168,10 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 	return s, nil
 }
 
+type CVParseResult struct {
+	Experiences []ExperienceString
+}
+
 type ExperienceString struct {
 	Title       string `json:"title"`
 	Name        string `json:"name"`
@@ -202,7 +206,7 @@ func FindIndex(slice []int, condition func(int) bool) int {
 
 // test.domain.com -> test___domain___com
 
-func Parse(text string) {
+func Parse(text string) (*CVParseResult, error) {
 	err := godotenv.Load()
 
 	// frontTitles := []string{
@@ -272,63 +276,6 @@ func Parse(text string) {
 		}
 	}
 
-	// for _, paragraph := range filteredParagraphs {
-	// 	sentences := strings.Split(paragraph, ".")
-	// 	// TODO: обрабатывать домены, из-за split(paragraph, ".") они тоже разбиваются test.com -> [test, com]
-	// 	sentencePositions := []string{}
-	// 	for _, sentence := range sentences {
-	// 		combinations := GenerateCombinations(strings.Split(sentence, " "))
-	// 		//foundedPosition := false
-
-	// 		for _, combination := range combinations {
-	// 			list, _ := spellInstance.Lookup(combination, spell.SuggestionLevel(spell.LevelClosest))
-	// 			if len(list) == 0 {
-	// 				continue
-	// 			}
-	// 			for _, l := range list {
-	// 				// TODO: добавил проверку на кол-во символов в слове. Но думаю, что не корректно в случае с QA, PM и тд.
-	// 				if len(l.Word) < 3 {
-	// 					continue
-	// 				}
-	// 				// fmt.Println("l: ", l.Word, l.WordData["type"])
-	// 				if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
-	// 					skills = append(skills, l.Word)
-	// 				}
-	// 				if l.WordData["type"] == "position" {
-	// 					if !ContainsItem(positions, l.Word) {
-	// 						positions = append(positions, l.Word)
-	// 					}
-	// 					sentencePositions = append(sentencePositions, l.Word)
-	// 					//foundedPosition = true
-	// 				}
-	// 			}
-	// 		}
-	// 		// fmt.Println("sentencePositions: ", sentencePositions)
-	// 		if len(sentencePositions) > 0 {
-	// 			dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
-	// 			if len(dataRange) == 0 {
-	// 				continue
-	// 			}
-	// 			// fmt.Println("dataRange", dataRange)
-
-	// 			years := regexYear.FindAllString(dataRange[0], -1)
-	// 			endDate := fmt.Sprintf("%v", math.Inf(1))
-	// 			if len(years) >= 2 {
-	// 				endDate = years[1]
-	// 			}
-	// 			experiences = append(experiences, Experience{
-	// 				Name:     sentencePositions[0],
-	// 				Start:    years[0],
-	// 				End:      endDate,
-	// 				Sentence: sentence,
-	// 			})
-
-	// 		}
-	// 		//fmt.Println(foundedPosition)
-
-	// 	}
-	// }
-
 	experienceList := []ExperienceString{}
 
 	fmt.Println("\n ======================================= filteredParagraphs ===================================================\n ")
@@ -366,7 +313,9 @@ func Parse(text string) {
 	for _, section := range sections {
 		sentenceList := []string{}
 		years := []string{}
-		sentencePositions := ""
+		sentencePositions := []string{}
+		sentenceSkills := []string{}
+		sentenceLevels := []string{}
 		combinations := GenerateCombinations(strings.Split(section[0], " "))
 
 		for _, combination := range combinations {
@@ -375,23 +324,26 @@ func Parse(text string) {
 				continue
 			}
 			for _, l := range list {
-				// TODO: добавил проверку на кол-во символов в слове. Но думаю, что не корректно в случае с QA, PM и тд.
+				// TODO: добавить проверку на кол-во символов в слове. Но думаю, что не корректно в случае с QA, PM и тд.
 				if len(l.Word) < 3 {
 					continue
 				}
 
 				if l.WordData["type"] == "level" {
-					fmt.Println(l.Word)
+					sentenceLevels = append(sentenceLevels, l.Word)
 				}
-				if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
-					skills = append(skills, l.Word)
+				if l.WordData["type"] == "skill" {
+					if !ContainsItem(skills, l.Word) {
+						skills = append(skills, l.Word)
+					}
+					sentenceSkills = append(sentenceSkills, l.Word)
+
 				}
 				if l.WordData["type"] == "position" {
 					if !ContainsItem(positions, l.Word) {
 						positions = append(positions, l.Word)
 					}
-					sentencePositions = l.Word
-
+					sentencePositions = append(sentencePositions, l.Word)
 				}
 			}
 		}
@@ -408,34 +360,6 @@ func Parse(text string) {
 				sentenceList = append(sentenceList, paragraph)
 				continue
 			}
-
-			// sentences := strings.Split(paragraph, ".")
-			// for _, sentence := range sentences {
-			// 	combinations := GenerateCombinations(strings.Split(sentence, " "))
-
-			// 	for _, combination := range combinations {
-			// 		list, _ := spellInstance.Lookup(combination, spell.SuggestionLevel(spell.LevelClosest))
-			// 		if len(list) == 0 {
-			// 			continue
-			// 		}
-			// 		for _, l := range list {
-			// 			// TODO: добавил проверку на кол-во символов в слове. Но думаю, что не корректно в случае с QA, PM и тд.
-			// 			if len(l.Word) < 3 {
-			// 				continue
-			// 			}
-			// 			if l.WordData["type"] == "skill" && !ContainsItem(skills, l.Word) {
-			// 				skills = append(skills, l.Word)
-			// 			}
-			// 			if l.WordData["type"] == "position" {
-			// 				if !ContainsItem(positions, l.Word) {
-			// 					positions = append(positions, l.Word)
-			// 				}
-			// 				sentencePositions = l.Word
-
-			// 			}
-			// 		}
-			// 	}
-			// }
 		}
 		endDate := fmt.Sprintf("%v", math.Inf(1))
 		if len(years) >= 2 {
@@ -443,7 +367,7 @@ func Parse(text string) {
 		}
 		experienceList = append(experienceList, ExperienceString{
 			Title:       section[0],
-			Name:        sentencePositions,
+			Name:        strings.Join(sentenceLevels, ", "),
 			Start:       years[0],
 			End:         endDate,
 			Description: strings.Join(sentenceList, "\n "),
@@ -479,6 +403,10 @@ func Parse(text string) {
 	/*	for _, position := range positions {
 		fmt.Println(position)
 	}*/
+
 	fmt.Println(err)
+	return &CVParseResult{
+		Experiences: experienceList,
+	}, nil
 
 }

@@ -1,7 +1,8 @@
 package CVParser
 
 import (
-	"awesomeProject2/app/parser"
+	"cv-parser/parser"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -160,7 +161,11 @@ func Test_parseExperience(t *testing.T) {
 
 func Test_Match(t *testing.T) {
 	// CV_FULL_PARAGRAPH_FORMATED
-	parser.Parse(parser.CV_ONLY_EXPIRIENCE)
+	res, err := parser.Parse(parser.CV_FULL_MACOS)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(res)
 	//for _, test := range tests {
 	//	assert.Equal(t, test.output, test.input)
 	//}

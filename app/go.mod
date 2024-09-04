@@ -1,4 +1,4 @@
-module awesomeProject2
+module cv-parser
 
 go 1.20
 
