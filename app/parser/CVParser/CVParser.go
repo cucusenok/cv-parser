@@ -21,10 +21,14 @@ var (
 	regexCorrectEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
 )
 
+// TODO добавить place
 type ExperienceString struct {
-	Date        string `json:"date"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Date        *work_duration.WorkPeriod `json:"date"`
+	Title       string                    `json:"title"`
+	Positions   []string                  `json:"position"`
+	Skills      []string                  `json:"skills"`
+	Level       []string                  `json:"level"`
+	Description string                    `json:"description"`
 }
 
 type JobTitles struct {
@@ -228,6 +232,76 @@ func calculateAverageLength(data []SentenceData) int {
 	return averageLength
 }
 
+func collectDataInRange(sentences, titleSentences []SentenceData) []ExperienceString {
+	var result []ExperienceString
+
+	for i := 0; i < len(titleSentences); i++ {
+		startIndex := titleSentences[i].Index
+		var endIndex int
+		if i+1 < len(titleSentences) {
+			endIndex = titleSentences[i+1].Index
+		} else {
+			endIndex = len(sentences)
+		}
+
+		var rangeData ExperienceString
+		var title string
+		date := &work_duration.WorkPeriod{
+			DateStart: "",
+			DateEnd:   "",
+		}
+		skills := []string{}
+		positions := []string{}
+		levels := []string{}
+		description := []string{}
+
+		for j := startIndex; j < endIndex; j++ {
+			sentence := sentences[j]
+			if j == startIndex {
+				title = sentence.Sentence
+			} else if len(sentence.Date.DateStart) > 0 {
+				date = sentence.Date
+			} else {
+				description = append(description, sentence.Sentence)
+			}
+
+			if len(sentence.Level) > 0 {
+				for _, level := range sentence.Level {
+					if !parser.ContainsItem(levels, level) {
+						levels = append(levels, level)
+					}
+				}
+			}
+			if len(sentence.Positions) > 0 {
+				for _, position := range sentence.Positions {
+					if !parser.ContainsItem(positions, position) {
+						positions = append(positions, position)
+					}
+				}
+			}
+			if len(sentence.Skills) > 0 {
+				for _, skill := range sentence.Skills {
+					if !parser.ContainsItem(skills, skill) {
+						skills = append(skills, skill)
+					}
+				}
+			}
+
+			rangeData = ExperienceString{
+				Title:       title,
+				Skills:      skills,
+				Positions:   positions,
+				Level:       levels,
+				Date:        date,
+				Description: strings.Join(description, " "),
+			}
+		}
+		result = append(result, rangeData)
+	}
+
+	return result
+}
+
 func ParseCV(text string) ([]ExperienceString, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
@@ -381,6 +455,9 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			upperCasingTitles++
 		}
 	}
+
+	experienceList = collectDataInRange(sentences, titleSentences)
+	fmt.Println("experienceList: ", experienceList)
 
 	// TODO добавить проверку на заголовки в верхнем регистре
 	if upperCasingTitles == 0 {
