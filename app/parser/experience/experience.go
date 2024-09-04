@@ -192,6 +192,10 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 	currentTitle := ""
 
 	cvData := text
+
+	// Как определить, что копирование из pdf файла было с ошибками
+	// test1 | hello1 -> (\S.*1)  if len(matchedSome) > len(strings.Split(text, "\n"))
+
 	cvData = regexCorrentEndOfSentence.ReplaceAllString(cvData, "$1.")
 	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")

@@ -7,6 +7,12 @@ services:
       - '1234:5432'
     volumes:
       - postgres:/var/lib/postgresql/data
+  api:
+    container_name: cv_parser_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+
 
 volumes:
   postgres:
