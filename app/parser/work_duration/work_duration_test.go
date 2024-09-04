@@ -35,7 +35,7 @@ func Test_parsePeriod(t *testing.T) {
 			input: "2000",
 			output: WorkPeriod{
 				DateStart: "2000",
-				DateEnd:   "+Inf",
+				DateEnd:   "",
 			},
 		},
 		{
@@ -79,14 +79,14 @@ func Test_parsePeriod(t *testing.T) {
 			input: "1923.12",
 			output: WorkPeriod{
 				DateStart: "12.1923",
-				DateEnd:   "+Inf",
+				DateEnd:   "",
 			},
 		},
 		{
 			input: "12.1923",
 			output: WorkPeriod{
 				DateStart: "12.1923",
-				DateEnd:   "+Inf",
+				DateEnd:   "",
 			},
 		},
 		// Incorrect separator between date
@@ -94,7 +94,7 @@ func Test_parsePeriod(t *testing.T) {
 			input: "11/12/1923",
 			output: WorkPeriod{
 				DateStart: "11.12.1923",
-				DateEnd:   "+Inf",
+				DateEnd:   "",
 			},
 		},
 		{
@@ -130,7 +130,7 @@ func Test_parsePeriod(t *testing.T) {
 			input: "1923.9.1",
 			output: WorkPeriod{
 				DateStart: "01.09.1923",
-				DateEnd:   "+Inf",
+				DateEnd:   "",
 			},
 		},
 
@@ -208,6 +208,14 @@ func Test_parsePeriod(t *testing.T) {
 				DateEnd:   "12.01.2033",
 			},
 		},
+		// даты с несколькими разделителями
+		{
+			input: "june, 2019 - june, 2020",
+			output: WorkPeriod{
+				DateStart: "06.2019",
+				DateEnd:   "06.2020",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run("parsePeriod", func(t *testing.T) {
@@ -216,7 +224,7 @@ func Test_parsePeriod(t *testing.T) {
 				// Отобрази в тестах появление ошибки
 				t.Errorf("got %v, want %v", result, tt.output)
 			}
-			if !reflect.DeepEqual(result, tt.output) {
+			if !reflect.DeepEqual(*result, tt.output) {
 				t.Errorf("got %v, want %v", result, tt.output)
 			}
 		})

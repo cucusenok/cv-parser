@@ -38,7 +38,7 @@ var (
 	regexAllSymbolsAfterDot      *regexp.Regexp = regexp.MustCompile(`\..*`)
 	regexAllSymbolsAfterQuestion *regexp.Regexp = regexp.MustCompile(`\?.*`)
 	regexURL                     *regexp.Regexp = regexp.MustCompile(`(?:[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[a-zA-Z0-9._%+-]*)*)`)
-	regexDateRangeExcludeEnd     *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
+	RegexDateRangeExcludeEnd     *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
 	regexListItems               *regexp.Regexp = regexp.MustCompile(`·.*?\.`)
 	regexCorrentEndOfSentence    *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
 )
@@ -345,7 +345,7 @@ func Parse(text string) {
 	*/
 	for i, paragraph := range filteredParagraphs {
 		fmt.Println(paragraph)
-		isDateParagraph := regexDateRangeExcludeEnd.MatchString(paragraph)
+		isDateParagraph := RegexDateRangeExcludeEnd.MatchString(paragraph)
 		if isDateParagraph {
 			experienceSectionsIndexes = append(experienceSectionsIndexes, i-1)
 		}
@@ -397,11 +397,11 @@ func Parse(text string) {
 		}
 
 		for _, paragraph := range section {
-			isDateParagraph := regexDateRangeExcludeEnd.MatchString(paragraph)
+			isDateParagraph := RegexDateRangeExcludeEnd.MatchString(paragraph)
 			isListItem := regexListItems.MatchString(paragraph)
 
 			if isDateParagraph {
-				dataRange := regexDateRangeExcludeEnd.FindAllString(paragraph, -1)
+				dataRange := RegexDateRangeExcludeEnd.FindAllString(paragraph, -1)
 				years = regexYear.FindAllString(dataRange[0], -1)
 				continue
 			} else if isListItem {

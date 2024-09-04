@@ -1,6 +1,7 @@
 package experience
 
 import (
+	"awesomeProject2/app/parser/work_duration"
 	"awesomeProject2/app/spell"
 	"database/sql"
 	"fmt"
@@ -16,27 +17,12 @@ var spellInstance *spell.Spell
 
 const MATCH_PERCENTAGE = 50
 
-/*
-	// Мы нашли должность, и понимает что должность занимает 90% строки
-	Co-Founder, Chief Design OfficerCo-Founder, Chief Design Officer
-	// мы ничего не достали отсюда, но понимаем, что строка коротка и до этого была должность - это может быть рекомендацией к тому чтобы быть компанией
-	Berkana Tech SolutionsBerkana Tech Solutions
-	Aug 2023 - Present · 1 yr 1 mo -- мы смогли спарсить промежуток
-*/
-
-// FULLSTACK DEVELOPER June, 2019 - June, 2020
-// тут есть position + тут есть промежуток времени - значит скорее всего это exprience title
-
 var (
-	regexYear                 *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}`)
 	regexDateRangeExcludeEnd  *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
-	regexListItems            *regexp.Regexp = regexp.MustCompile(`·.*?\.`)
-	regexCorrentEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
+	regexCorrectEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
 )
 
 type ExperienceString struct {
-	//Start       string `json:"start_date"`
-	//End         string `json:"end_date"`
 	Date        string `json:"date"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -178,6 +164,34 @@ func addToDescription(experience *ExperienceString, newDescription string) {
 	experience.Description += newDescription
 }
 
+/*
+	splitOnDate разбивает строку на две части, одна из которых дата, вторая - любой текст, который не относится к дате. И возвращает две строки соответственно
+	Пример splitOnDate:
+
+	FOUNDER (START-UP) Nov, 2022 - May, 2023 => ("FOUNDER (START-UP)","Nov, 2022 - May, 2023")
+*/
+
+func splitOnDate(text string) (string, string) {
+	parts := strings.Split(text, " ")
+	var beforeDateParts []string
+	var dateParts []string
+
+	for _, part := range parts {
+		if work_duration.RegexDates.MatchString(part) {
+			dateParts = append(dateParts, part)
+		} else if len(dateParts) == 0 { // Мы еще не начали находить дату
+			beforeDateParts = append(beforeDateParts, part)
+		} else { // Мы уже начали находить дату, но часть не соответствует регулярному выражению
+			dateParts = append(dateParts, part)
+		}
+	}
+
+	beforeDate := strings.Join(beforeDateParts, " ")
+	dateBlock := strings.Join(dateParts, " ")
+
+	return beforeDate, dateBlock
+}
+
 // test.domain.com -> test___domain___com
 
 func ParseExperience(text string) ([]ExperienceString, error) {
@@ -192,11 +206,7 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 	currentTitle := ""
 
 	cvData := text
-
-	// Как определить, что копирование из pdf файла было с ошибками
-	// test1 | hello1 -> (\S.*1)  if len(matchedSome) > len(strings.Split(text, "\n"))
-
-	cvData = regexCorrentEndOfSentence.ReplaceAllString(cvData, "$1.")
+	cvData = regexCorrectEndOfSentence.ReplaceAllString(cvData, "$1.")
 	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
 	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 	lowerCaseText := strings.ToLower(cvData)
@@ -212,14 +222,29 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 			filteredParagraphs = append(filteredParagraphs, trimmedParagraph)
 		}
 	}
+	fmt.Println("filteredParagraphs: ", filteredParagraphs)
 
 	for index, paragraph := range filteredParagraphs {
+		isMatchDate := work_duration.IsMatchDate(paragraph)
+		if isMatchDate {
+			text, date := splitOnDate(paragraph)
+			fmt.Println("text, date: ", text, date)
+		}
+
 		sentences := strings.Split(paragraph, ".")
+		var filteredSentences []string
+		for _, sentence := range sentences {
+			trimmed := strings.TrimSpace(sentence)
+			if trimmed != "" {
+				filteredSentences = append(filteredSentences, trimmed)
+			}
+		}
+
 		// TODO: обрабатывать домены, из-за split(paragraph, ".") они тоже разбиваются test.com -> [test, com]
 		// TODO: обрабатывать числа формата nn.nn => 2.2 и тд
 		sentencePositions := []string{}
 
-		for _, sentence := range sentences {
+		for _, sentence := range filteredSentences {
 			splitSentence := strings.Split(sentence, " ")
 			combinations := GenerateCombinations(splitSentence)
 
@@ -247,7 +272,6 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 			if len(sentencePositions) > 0 {
 				isTitle := (len(sentencePositions)*100)/len(splitSentence) >= MATCH_PERCENTAGE // если совпадений слов >= MATCH_PERCENTAGE(50%), считаю, что это заголовок
 
-				// TODO добавить проверку на дату
 				if isTitle {
 					currentTitle = sentence
 				} else {
@@ -255,20 +279,6 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 				}
 				sentencePositions = []string{}
 
-				//if !isTitle {
-				//	description = append(description, sentence)
-				//} else {
-				//	dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
-				//	years := []string{}
-				//	if dataRange != nil {
-				//		years = regexYear.FindAllString(dataRange[0], -1)
-				//		endDate = fmt.Sprintf("%v", math.Inf(1))
-				//		if len(years) >= 2 {
-				//			endDate = years[1]
-				//		}
-				//	}
-				//	title = sentence
-				//}
 			} else {
 				dataRange := regexDateRangeExcludeEnd.FindAllString(sentence, -1)
 				isDate := dataRange != nil
@@ -278,16 +288,16 @@ func ParseExperience(text string) ([]ExperienceString, error) {
 					addToDescription(&experience, sentence)
 				}
 			}
+		}
 
-			if len(currentTitle) > 0 {
-				if len(experience.Title) == 0 {
-					experience.Title = currentTitle
-				}
-				updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
-				if updateExperienceList {
-					experienceList = append(experienceList, experience)
-					experience = ExperienceString{}
-				}
+		if len(currentTitle) > 0 {
+			if len(experience.Title) == 0 {
+				experience.Title = currentTitle
+			}
+			updateExperienceList := len(experience.Title) > 0 && (experience.Title != currentTitle || (len(filteredParagraphs)-1) == index)
+			if updateExperienceList {
+				experienceList = append(experienceList, experience)
+				experience = ExperienceString{}
 			}
 		}
 	}
