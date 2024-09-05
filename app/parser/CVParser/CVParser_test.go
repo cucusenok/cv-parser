@@ -129,7 +129,7 @@ func Test_parseExperience(t *testing.T) {
 	tests := []TestCase{
 		// Without title
 		{
-			input:  parser.CV_FULL_PARAGRAPH_FORMATED,
+			input:  parser.FULL_CV_YEGOR,
 			output: []ExperienceString{},
 		},
 		//// Only title

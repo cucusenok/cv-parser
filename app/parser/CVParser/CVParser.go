@@ -48,6 +48,7 @@ type SentenceData struct {
 	Level          []string                  `json:"level"`
 	Date           *work_duration.WorkPeriod `json:"date"`
 	Sentence       string                    `json:"sentence"`
+	RawSentence    string                    `json:"raw_sentence"`
 	UpperCaseWords []string                  `json:"upperCaseWords"`
 }
 
@@ -326,9 +327,6 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	titleSentences := []SentenceData{}
 
 	cvData := text
-	cvData = regexCorrectEndOfSentence.ReplaceAllString(cvData, "$1.")
-	cvData = strings.ReplaceAll(cvData, ". ' ", ". \n · ")
-	cvData = strings.ReplaceAll(cvData, " ' ", " \n · ")
 
 	possibleJobTitles := []JobTitles{}
 	sentencesWithDates := []SentenceData{}
@@ -337,7 +335,13 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 	paragraphs := strings.Split(cvData, "\n")
 
-	for index, paragraph := range paragraphs {
+	for index, rawParagraph := range paragraphs {
+
+		/*
+			При копировании из PDF в конце строк может отображаться вместо точек "." -> "1"
+		*/
+		paragraph := regexCorrectEndOfSentence.ReplaceAllString(rawParagraph, "$1.")
+
 		trimmedParagraph := strings.TrimSpace(paragraph) // Убираем лишние пробелы
 		if trimmedParagraph == "" {
 			continue
@@ -390,6 +394,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			date = parsedDate
 		}
 
+		// TODO: добавить проверку что строка может быть частью списка/bullet
 		sentences = append(sentences, SentenceData{
 			Index:          index,
 			WordsCount:     len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
@@ -400,6 +405,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			Level:          levels,
 			Date:           date,
 			Sentence:       paragraph,
+			RawSentence:    rawParagraph,
 			UpperCaseWords: upperCaseWords,
 		})
 	}
@@ -407,6 +413,9 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	averageWordsCount = calculateAverageLength(sentences)
 
 	for _, sentence := range sentences {
+		if sentence.WordsCount == 0 {
+			continue
+		}
 		jobTitle := JobTitles{}
 		if sentence.Sentence == "JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance" {
 			fmt.Println(sentence)
@@ -418,7 +427,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			// Добавим больше вероятности строкам с датами
 			// TODO: У тебя сейчас "Jan, 2017 - June, 2019" - разобьется на 2017 и 2019 - что с точки зрения подсчета не верно
 			// нужно "Jan 2017" и "June 2019" а потом сделать:
-			// payloadPercent = payloadPercent + len(strings.split(sentence.Date.DateStart, " ")) + len(strings.split(sentence.Date.DateEnd, " "))
+			// payloadPercentpayloadPercent + len(strings.split(sentence.Date.DateStart, " ")) + len(strings.split(sentence.Date.DateEnd, " "))
 			payloadPercent = payloadPercent + 4
 		}
 		payloadPercent = (payloadPercent * 100) / sentence.WordsCount
@@ -436,6 +445,7 @@ func ParseCV(text string) ([]ExperienceString, error) {
 				Sentence: sentence.Sentence,
 				Index:    sentence.Index,
 			}
+			// TODO: добавь проверку что job title не bullet
 			possibleJobTitles = append(possibleJobTitles, jobTitle)
 		}
 		if len(sentence.Date.DateStart) > 0 {
@@ -443,15 +453,24 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		}
 	}
 
-	interval := 2
+	/*
+
+			Ожидается что дата для job title
+		   JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019
+		   будет либо в этой либо несколько строк выше/ниже
+			JUNIOR FULL STACK DEVELOPER
+			Jan, 2017 - June, 2019
+		   Это параметр который определяет максимальное расстояние между строками
+	*/
+	allowedInterval := 2
 
 	for _, possibleJobTitle := range possibleJobTitles {
-		startIndex := possibleJobTitle.Index - interval
+		startIndex := possibleJobTitle.Index - allowedInterval
 		if startIndex < 0 {
 			startIndex = 0
 		}
 
-		endIndex := possibleJobTitle.Index + interval
+		endIndex := possibleJobTitle.Index + allowedInterval
 		if endIndex >= len(sentences) {
 			endIndex = len(sentences) - 1
 		}

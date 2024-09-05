@@ -104,3 +104,261 @@ JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance
  Successfully completed an Internship at the Institute of Artificial Intelligence of Ukraine, gaining hands-on experience in various aspects of AI, including text classification and fundamental methodologies
  Studied and implemented key techniques such as tokenization, vectorization, lemmatization, logistic regression, and Random Forest in the context of natural language processing and machine learning.
 `
+
+const CANVA_RICHARD_CV = `EDUCATION
+RICHARD SANCHEZ
+MARKETING MANAGER
+CONTACT
++123-456-7890
+hello@reallygreatsite.com
+123 Anywhere St., Any City
+www.reallygreatsite.com
+SKILLS
+Project Management
+Public Relations
+Teamwork
+Time Management
+Leadership
+Effective Communication
+Critical Thinking
+WARDIERE UNIVERSITY
+Master of Business
+Management
+2029 - 2030
+2025 - 2029
+WARDIERE UNIVERSITY
+Bachelor of Business
+GPA: 3.8 / 4.0
+English (Fluent)
+French (Fluent)
+German (Basics)
+Spanish (Intermediate)
+LANGUAGES
+WORK EXPERIENCE
+REFERENCE
+PROFILE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam quis
+nostrud exercitation. Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+minim veniam quis nostrud exercitation. Ut enim ad minim veniam quis nostrud
+exercitation.
+123-456-7890
+hello@reallygreatsite.com
+Harper Richard
+Phone:
+Email :
+Wardiere Inc. / CEO
+123-456-7890
+hello@reallygreatsite.com
+Estelle Darcy
+Phone:
+Email :
+Wardiere Inc. / CTO
+2030 - PRESENT
+Borcelle Studio
+Marketing Manager & Specialist
+2025 - 2029
+Fauget Studio
+Marketing Manager & Specialist
+2024 - 2025
+Studio Shodwe
+Marketing Manager & Specialist
+Develop and execute comprehensive marketing strategies and
+campaigns that align with the company's goals and objectives.
+Lead, mentor, and manage a high-performing marketing team,
+fostering a collaborative and results-driven work environment.
+Monitor brand consistency across marketing channels and materials.
+Create and manage the marketing budget, ensuring efficient
+allocation of resources and optimizing ROI.
+Oversee market research to identify emerging trends, customer needs,
+and competitor strategies.
+Monitor brand consistency across marketing channels and materials.
+Develop and maintain strong relationships with partners, agencies,
+and vendors to support marketing initiatives.
+Monitor and maintain brand consistency across all marketing
+channels and materials.`
+
+const name = `
+CONTACT
++123-456-7890
+hello@reallygreatsite.com
+123 Anywhere St., Any City
+www.reallygreatsite.com
+SKILLS
+Project Management
+Public Relations
+Teamwork
+Time Management
+Leadership
+Effective Communication
+Critical Thinking
+WARDIERE UNIVERSITY
+Master of Business
+Management
+2029 - 2030
+2025 - 2029
+WARDIERE UNIVERSITY
+Bachelor of Business
+GPA: 3.8 / 4.0
+English (Fluent)
+French (Fluent)
+German (Basics)
+Spanish (Intermediate)
+LANGUAGES
+WORK EXPERIENCE
+REFERENCE
+PROFILE
+Lorem ipsum do`
+
+const FULL_CV_YEGOR = `/
+YEGOR ARNDT
+Full stack Developer
++995 5919 40 327 yegorarndt@gmail.com https://github.com/YegorArndt
+linkedin.com/in/yegor-arndt-886196259/ Georgia, Tbilisi
+SKILLS
+Client-Side
+HTML CSS JS Next.js React React Query
+Redux TypeScript Tailwind / SCSS MUI / Emotion
+Server-side
+Node.js C# / .NET tRPC Prisma ORM Postgres
+MySQL Redis
+Development & Operations
+Cypress Jest Scrum Agile GIT
+EDUCATION
+M.S. in Computer Science
+Stanford Unversity
+2008 - 2009 Palo Alto, CA
+GPA
+3.9 4.0
+SUMMARY
+Full Stack Developer with 5+ years of experience in
+React/Next.js, TypeScript, Node.js, and a diverse
+tech stack. Expert in leading projects impacting
+daily financial transactions over $1M. Proficient in
+full product lifecycle management, including project
+management, customer communication, business
+analysis, team leadership, and software
+development.
+PROJECTS
+OpenFlow based Firewall
+08/2012 - 12/2013 Palo Alto, CA
+https://github.com/danette.east/OpenFlow-Firewall
+OpenFlow protocol-based proactive Firewall in
+Python and NodeJS.
+Configured static rules using MD-SAL
+Engineered proactive rule evaluation system at
+OSI layer 7 using POX controller
+Provided flexibility to configure rule using
+centralised NodeJS based GUI
+STRENGTHS
+Team Leadership
+Introduction to Leadership course by Harvard
+Communication
+Attended a Communication course at Stanford.
+www.enhancv.com 
+Powered by
+E  q
+q 
+•
+•
+•
+EXPERIENCE
+Senior Full stack Developer
+Alloy Software
+01/2023 - 10/2023 New Jersey, CA, Remote
+Leveraged .NET, C#, React Query, React.js, Jest,
+Zustand to develop a React + .NET web application
+for Alloy Software that manages devices for
+thousands of businesses driving $100K+ in
+revenue.
+• Optimized handling large datasets, resulting in a
+30% reduction in task processing time. The
+implementation significantly enhanced the
+application's responsiveness, especially under
+heavy workloads.
+• Quickly adapted to and learned C# and .NET
+framework to implement REST APIs and conduct
+seamless database migrations.
+• Collaborated with a team of dozens of engineers
+to architect robust and scalable solutions.
+• Collaborated with the designer to implement
+pixel-perfect UIs using Material-UI to ensure sleek
+UI/UX.
+• Integrated microservices, microfrontends, and
+SSO, optimizing system performance with a 20%
+reduction in response time and ensuring
+streamlined operations.
+• Adapted to different projects with varying tech
+stacks, demonstrating exceptional adaptability and
+team integration.
+• Identified and resolved complex bugs, optimized
+for faster load times and smoother operation.
+• Implemented a DSL-based interface with full-text
+search and XML-tree validation/generation.
+• Upheld a high standard of test coverage using
+Cypress and Jest.
+Hired, trained and leading an Agile team of 7
+full-stack developers
+Developed indexed database architecture using
+SQL procedures and triggers for 10 different
+applications
+Worked with Core Java to develop automated
+solutions to include web interfaces using HTML,
+CSS, JavaScript and Web services
+Worked with a committee of 6 members to
+organise fun-activities for the employees
+www.enhancv.com 
+Powered by
+•
+•
+•
+•
+EXPERIENCE
+Full Stack Developer
+Lauzon
+2013 - 2018 San Fransisco, CA
+Lauzon is a universal digital loyalty program that
+offers unique and fun rewards at the places you
+love.
+Hired, trained and lead Agile team of 7 full-stack
+developers
+Simultaneously created & maintained scheduled
+jobs in SQL Server for space maintenance and
+daily backups of system and user databases for
+10 clients
+Increased company revenue by 30% within 2
+months after developing and implementing
+business logic for over 20 features
+Designed and Developed UI design for over 15
+clients using CSS, HTML, ASP.NET, Vue, and
+React; websites scoring over 85 on Lighthouse
+Solution Architect
+Keeling Group
+2010 - 2013 Palo Alto, CA
+Keeling Group is a leading Digital Product Studio in
+California, helping companies to thrive on mobile
+apps, the web, VR/AR and IoT.
+Shortened project timeline by 14 months for
+company's largest customer by managing
+relationship with 3rd party vendors, saving over
+$800K
+Led development of $500K research project
+which was deemed a "gold standard" by the
+client
+Fine-tuned and developed AI/ML-based
+algorithms based on the results with Scikit-
+learn, increasing revenue 2-fold
+Performed Web Scraping over a catalog of
+100K+ school supply products using mainly
+NodeJS and MongoDB; completed in 1 month
+www.enhancv.com 
+Powered by
+•
+•
+•
+•
+•
+•
+•
+•`

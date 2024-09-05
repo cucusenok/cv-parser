@@ -172,6 +172,10 @@ type CVParseResult struct {
 	Experiences []ExperienceString
 }
 
+func (cvp *CVParseResult) ToJsonDSL() {
+	// TODO: конвертация в нужный формат для API
+}
+
 type ExperienceString struct {
 	Title       string `json:"title"`
 	Name        string `json:"name"`
