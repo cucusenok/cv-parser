@@ -136,45 +136,6 @@ func ReplaceDateWithMonthNumber(date string) string {
 }
 
 /*
-isValidDate проверяет дату на корректность.
-month >= 1 && month <= 12
-day >= 1 && day <= 31
-TODO: обработать некорректные даты
-TODO: привести пример валидных дат
-*/
-func isValidDate(value string) bool {
-	date := regexFullDate.FindStringSubmatch(value)
-	if len(date) == 0 {
-		return false
-	}
-
-	var month, day int
-	var err error
-
-	if len(date) == 3 {
-		month, err = strconv.Atoi(date[1])
-		day, err = strconv.Atoi(date[0])
-	} else if len(date) == 2 {
-		month, err = strconv.Atoi(date[0])
-	}
-
-	if err != nil {
-		return false
-	}
-
-	isWithoutDays := day == 0
-	onlyYear := month == 0 && day == 0
-
-	if onlyYear {
-		return true
-	} else if isWithoutDays {
-		return month >= 1 && month <= 12
-	} else {
-		return (month >= 1 && month <= 12) || (day >= 1 && day <= 31)
-	}
-}
-
-/*
 	reverseDate возвращает дату в формате dd.mm.yyyy.
 	Примеры reverseDate:
 
@@ -330,15 +291,10 @@ func ParsePeriod(text string) (*WorkPeriod, error) {
 	}
 
 	startDate := result[0]
-
-	if !isValidDate(startDate) {
-		startDate = ""
-	}
-
 	endDate := ""
 
 	if len(result) > 2 {
-		// Тут нужна с-ма логирования, чтобы увидеть какой пользовательский ввод поломал софт
+		// Тут нужна с-ма логирования, чтобы увидеть, какой пользовательский ввод поломал софт
 
 		resStr := fmt.Sprintf("Text pasrsin failed: %s", text)
 		fmt.Println(resStr)
@@ -348,10 +304,6 @@ func ParsePeriod(text string) (*WorkPeriod, error) {
 
 	if len(result) == 2 {
 		endDate = result[1]
-
-		if !isValidDate(endDate) {
-			endDate = ""
-		}
 	}
 
 	return &WorkPeriod{

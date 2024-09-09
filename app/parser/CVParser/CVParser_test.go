@@ -2,7 +2,6 @@ package CVParser
 
 import (
 	"cv-parser/parser"
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -125,24 +124,12 @@ type TestCase struct {
 	output []ExperienceString
 }
 
-func Test_parseExperience(t *testing.T) {
+func Test_ParseCV(t *testing.T) {
 	tests := []TestCase{
-		// Without title
 		{
-			input:  parser.FULL_CV_YEGOR,
+			input:  parser.CV_FULL_PARAGRAPH_FORMATED,
 			output: []ExperienceString{},
 		},
-		//// Only title
-		//{
-		//	input: "typescript reactjs programmer designer",
-		//	output: []ExperienceString{
-		//		{
-		//			Date:        "",
-		//			Title:       strings.ToLower("Typescript reactjs programmer designer"),
-		//			Description: "",
-		//		},
-		//	},
-		//},
 	}
 
 	for _, tt := range tests {
@@ -157,16 +144,4 @@ func Test_parseExperience(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_Match(t *testing.T) {
-	// CV_FULL_PARAGRAPH_FORMATED
-	res, err := parser.Parse(parser.CV_FULL_MACOS)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(res)
-	//for _, test := range tests {
-	//	assert.Equal(t, test.output, test.input)
-	//}
 }

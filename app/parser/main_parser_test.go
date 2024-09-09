@@ -61,7 +61,8 @@ type Profile struct {
 	Education    []Education   `json:"education"`
 	Certificates []Certificate `json:"certificates"`
 }
-const jsonStr := `{
+
+const jsonStr = `{
    "job_title": "senior full stack developer",
    "contacts": {
      "emails": ["cucusenok.work@gmail.com"],
@@ -173,7 +174,6 @@ const jsonStr := `{
        }
    ]
 }`
-
 
 func MainTest(t *testing.T) {
 	// тут польностью проверить тип

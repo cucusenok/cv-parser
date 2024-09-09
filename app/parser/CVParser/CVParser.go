@@ -19,37 +19,30 @@ var spellInstance *spell.Spell
 
 var (
 	regexCorrectEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
-	multipleSpaceRegex        *regexp.Regexp = regexp.MustCompile(`\s+`)
-	specialCharsetRegex       *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9 ]+")
+	specialCharsetRegex       *regexp.Regexp = regexp.MustCompile("[^а-яА-Яa-zA-Z0-9 ]+")
 )
 
-// TODO добавить place
 type ExperienceString struct {
 	Date        *work_duration.WorkPeriod `json:"date"`
 	Title       string                    `json:"title"`
 	Positions   []string                  `json:"position"`
 	Skills      []string                  `json:"skills"`
 	Level       []string                  `json:"level"`
-	Description string                    `json:"description"`
-}
-
-type JobTitles struct {
-	Sentence string `json:"sentence"`
-	Index    int    `json:"index"`
+	Description []string                  `json:"description"`
 }
 
 type SentenceData struct {
-	Index          int                       `json:"index"`
-	WordsCount     int                       `json:"wordsCount"`
-	Commas         int                       `json:"commas"`
-	Words          []string                  `json:"words"`
-	Skills         []string                  `json:"skills"`
-	Positions      []string                  `json:"position"`
-	Level          []string                  `json:"level"`
-	Date           *work_duration.WorkPeriod `json:"date"`
-	Sentence       string                    `json:"sentence"`
-	RawSentence    string                    `json:"raw_sentence"`
-	UpperCaseWords []string                  `json:"upperCaseWords"`
+	Index            int                       `json:"index"`
+	WordsCount       int                       `json:"wordsCount"`
+	Commas           int                       `json:"commas"`
+	Words            []string                  `json:"words"`
+	Skills           []string                  `json:"skills"`
+	Positions        []string                  `json:"position"`
+	Level            []string                  `json:"level"`
+	Date             *work_duration.WorkPeriod `json:"date"`
+	Sentence         string                    `json:"sentence"`
+	UpperCaseWords   []string                  `json:"upperCaseWords"`
+	IsPossibleBullet bool                      `json:"isPossibleBullet"`
 }
 
 func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) error {
@@ -262,10 +255,12 @@ func collectDataInRange(sentences, titleSentences []SentenceData) []ExperienceSt
 			sentence := sentences[j]
 			if j == startIndex {
 				title = sentence.Sentence
-			} else if len(sentence.Date.DateStart) > 0 {
-				date = sentence.Date
 			} else {
 				description = append(description, sentence.Sentence)
+			}
+
+			if sentence.Date.DateStart != "" {
+				date = sentence.Date
 			}
 
 			if len(sentence.Level) > 0 {
@@ -296,7 +291,7 @@ func collectDataInRange(sentences, titleSentences []SentenceData) []ExperienceSt
 				Positions:   positions,
 				Level:       levels,
 				Date:        date,
-				Description: strings.Join(description, " "),
+				Description: description,
 			}
 		}
 		result = append(result, rangeData)
@@ -328,25 +323,27 @@ func ParseCV(text string) ([]ExperienceString, error) {
 
 	cvData := text
 
-	possibleJobTitles := []JobTitles{}
+	possibleJobTitles := []SentenceData{}
 	sentencesWithDates := []SentenceData{}
 
 	var averageWordsCount int
 
 	paragraphs := strings.Split(cvData, "\n")
+	var filteredParagraphs []string
 
-	for index, rawParagraph := range paragraphs {
-
+	for _, rawParagraph := range paragraphs {
 		/*
 			При копировании из PDF в конце строк может отображаться вместо точек "." -> "1"
 		*/
 		paragraph := regexCorrectEndOfSentence.ReplaceAllString(rawParagraph, "$1.")
 
 		trimmedParagraph := strings.TrimSpace(paragraph) // Убираем лишние пробелы
-		if trimmedParagraph == "" {
-			continue
+		if trimmedParagraph != "" {
+			filteredParagraphs = append(filteredParagraphs, trimmedParagraph)
 		}
+	}
 
+	for index, paragraph := range filteredParagraphs {
 		date := &work_duration.WorkPeriod{
 			DateStart: "",
 			DateEnd:   "",
@@ -358,6 +355,11 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		upperCaseWords := []string{}
 		combinations := parser.GenerateCombinations(strings.Split(paragraph, " "))
 		words := strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))
+		isPossibleBullet := false
+
+		if strings.HasPrefix(paragraph, "•") {
+			isPossibleBullet = true
+		}
 
 		for _, combination := range combinations {
 			list, _ := spellInstance.Lookup(strings.ToLower(combination), spell.SuggestionLevel(spell.LevelClosest))
@@ -394,19 +396,18 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			date = parsedDate
 		}
 
-		// TODO: добавить проверку что строка может быть частью списка/bullet
 		sentences = append(sentences, SentenceData{
-			Index:          index,
-			WordsCount:     len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
-			Words:          strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, "")),
-			Commas:         strings.Count(paragraph, ","),
-			Skills:         skills,
-			Positions:      positions,
-			Level:          levels,
-			Date:           date,
-			Sentence:       paragraph,
-			RawSentence:    rawParagraph,
-			UpperCaseWords: upperCaseWords,
+			Index:            index,
+			WordsCount:       len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
+			Words:            strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, "")),
+			Commas:           strings.Count(paragraph, ","),
+			Skills:           skills,
+			Positions:        positions,
+			Level:            levels,
+			Date:             date,
+			Sentence:         paragraph,
+			UpperCaseWords:   upperCaseWords,
+			IsPossibleBullet: isPossibleBullet,
 		})
 	}
 
@@ -416,36 +417,27 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		if sentence.WordsCount == 0 {
 			continue
 		}
-		jobTitle := JobTitles{}
-		if sentence.Sentence == "JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance" {
-			fmt.Println(sentence)
-		}
+		jobTitle := SentenceData{}
 
 		// Процент полезной нагрузки в предложении
 		payloadPercent := (len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level))
 		if sentence.Date.DateStart != "" || sentence.Date.DateEnd != "" {
 			// Добавим больше вероятности строкам с датами
-			// TODO: У тебя сейчас "Jan, 2017 - June, 2019" - разобьется на 2017 и 2019 - что с точки зрения подсчета не верно
-			// нужно "Jan 2017" и "June 2019" а потом сделать:
-			// payloadPercentpayloadPercent + len(strings.split(sentence.Date.DateStart, " ")) + len(strings.split(sentence.Date.DateEnd, " "))
-			payloadPercent = payloadPercent + 4
+			payloadPercent = payloadPercent + len(strings.Split(sentence.Date.DateStart, ".")) + len(strings.Split(sentence.Date.DateEnd, "."))
 		}
 		payloadPercent = (payloadPercent * 100) / sentence.WordsCount
 		maxWordCountParam := 7
 
 		// Если в строке Skills + Positions + Level
 		// занимают >= 50% строки и короче средней длины строки
-		// занимает 80% строки но больше maxWordCountParam и тогда может быть длинее averageWordsCount
+		// занимает 80% строки, но больше maxWordCountParam и тогда может быть длиннее averageWordsCount
 		// тогда считаем, что это может быть jobTitle
 		if len(sentence.Positions) > 0 &&
 			(payloadPercent >= 50) &&
+			!sentence.IsPossibleBullet &&
 			(sentence.WordsCount < averageWordsCount ||
 				(sentence.WordsCount > maxWordCountParam) && (payloadPercent > 80) && (sentence.WordsCount-averageWordsCount < 6)) {
-			jobTitle = JobTitles{
-				Sentence: sentence.Sentence,
-				Index:    sentence.Index,
-			}
-			// TODO: добавь проверку что job title не bullet
+			jobTitle = sentence
 			possibleJobTitles = append(possibleJobTitles, jobTitle)
 		}
 		if len(sentence.Date.DateStart) > 0 {
@@ -454,13 +446,12 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	}
 
 	/*
-
-			Ожидается что дата для job title
-		   JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019
-		   будет либо в этой либо несколько строк выше/ниже
-			JUNIOR FULL STACK DEVELOPER
-			Jan, 2017 - June, 2019
-		   Это параметр который определяет максимальное расстояние между строками
+	   Ожидается что дата для job title
+	   JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019
+	   будет либо в этой либо несколько строк выше/ниже
+	   JUNIOR FULL STACK DEVELOPER
+	   Jan, 2017 - June, 2019
+	   Это параметр который определяет максимальное расстояние между строками
 	*/
 	allowedInterval := 2
 
@@ -497,10 +488,9 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	}
 
 	experienceList = collectDataInRange(sentences, titleSentences)
-	fmt.Println("experienceList: ", experienceList)
 
 	// TODO добавить проверку на заголовки в верхнем регистре
-	if upperCasingTitles == 0 {
+	if upperCasingTitles != 0 {
 	}
 
 	if err != nil {
