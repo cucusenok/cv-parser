@@ -20,7 +20,35 @@ var spellInstance *spell.Spell
 var (
 	regexCorrectEndOfSentence *regexp.Regexp = regexp.MustCompile(`\b([^0-9\s]+)1\b`)
 	specialCharsetRegex       *regexp.Regexp = regexp.MustCompile("[^а-яА-Яa-zA-Z0-9 ]+")
+	regexPhone                *regexp.Regexp = regexp.MustCompile(`\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}`)
+	regexGithub               *regexp.Regexp = regexp.MustCompile(`https?://github.com/([a-zA-Z0-9._-]+)$`)
+	regexEmail                *regexp.Regexp = regexp.MustCompile(`^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`)
+	regexSocials              *regexp.Regexp = regexp.MustCompile(`((https|http):\/\/)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)`)
 )
+
+type AddressData struct {
+	Country     string `json:"country"`
+	City        string `json:"city"`
+	State       string `json:"state"`
+	CountryCode string `json:"country_code"`
+	StateCode   string `json:"state_code"`
+}
+
+type EducationData struct {
+	Date        *work_duration.WorkPeriod `json:"date"`
+	Place       string                    `json:"place"`
+	Title       string                    `json:"title"`
+	Levels      []string                  `json:"levels"`
+	Description []string                  `json:"description"`
+}
+
+type ContactsData struct {
+	Emails         []string    `json:"emails"`
+	Github         string      `json:"github"`
+	Address        AddressData `json:"address"`
+	Phones         []string    `json:"phones"`
+	SocialNetworks []string    `json:"social_networks"`
+}
 
 type ExperienceString struct {
 	Date        *work_duration.WorkPeriod `json:"date"`
@@ -43,6 +71,18 @@ type SentenceData struct {
 	Sentence         string                    `json:"sentence"`
 	UpperCaseWords   []string                  `json:"upperCaseWords"`
 	IsPossibleBullet bool                      `json:"isPossibleBullet"`
+	Github           string                    `json:"github"`
+	Phones           []string                  `json:"phones"`
+	SocialNetworks   []string                  `json:"social_networks"`
+	Emails           []string                  `json:"emails"`
+}
+
+type CVData struct {
+	JobTitle   string             `json:"job_title"`
+	Contacts   ContactsData       `json:"contacts"`
+	Skills     []string           `json:"skills"`
+	Experience []ExperienceString `json:"experience"`
+	Educations []EducationData    `json:"educations"`
 }
 
 func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) error {
@@ -311,20 +351,76 @@ func IsAllowedDistanceForWord(suggest spell.Suggestion) bool {
 	return suggest.Distance < 3
 }
 
-func ParseCV(text string) ([]ExperienceString, error) {
+/*
+Функция findTitleSentences фильтрует возможные job titles и возвращает данные исходя их условий.
+Считаем, что заголовки, которые возвращаются этой функцией - job title
+*/
+func findTitleSentences(possibleJobTitles []SentenceData, allSentences []SentenceData) []SentenceData {
+
+	/*
+	   Ожидается что дата для job title
+	   JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019
+	   будет либо в этой либо несколько строк выше/ниже
+	   JUNIOR FULL STACK DEVELOPER
+	   Jan, 2017 - June, 2019
+	   Это параметр который определяет максимальное расстояние между строками
+	*/
+	allowedInterval := 2
+
+	titleSentences := []SentenceData{}
+	for _, possibleJobTitle := range possibleJobTitles {
+		startIndex := possibleJobTitle.Index - allowedInterval
+		if startIndex < 0 {
+			startIndex = 0
+		}
+
+		endIndex := possibleJobTitle.Index + allowedInterval
+		if endIndex >= len(allSentences) {
+			endIndex = len(allSentences) - 1
+		}
+
+		dateFound := false
+		for i := startIndex; i <= endIndex; i++ {
+			if allSentences[i].Date != nil &&
+				allSentences[i].Date.DateStart != "" {
+				dateFound = true
+				break
+			}
+		}
+
+		if dateFound {
+			titleSentences = append(titleSentences, allSentences[possibleJobTitle.Index])
+		}
+	}
+
+	return titleSentences
+}
+
+func ParseCV(text string) (CVData, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
 	if err != nil {
-		return nil, err
+		return CVData{}, err
 	}
+
+	contactsData := ContactsData{}
 	experienceList := []ExperienceString{}
 	sentences := []SentenceData{}
 	titleSentences := []SentenceData{}
+
+	addressData := AddressData{
+		Country:     "",
+		City:        "",
+		CountryCode: "",
+		State:       "",
+		StateCode:   "",
+	}
 
 	cvData := text
 
 	possibleJobTitles := []SentenceData{}
 	sentencesWithDates := []SentenceData{}
+	skills := []string{}
 
 	var averageWordsCount int
 
@@ -348,7 +444,6 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			DateStart: "",
 			DateEnd:   "",
 		}
-
 		skills := []string{}
 		positions := []string{}
 		levels := []string{}
@@ -396,6 +491,13 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			date = parsedDate
 		}
 
+		github := regexGithub.FindString(paragraph)
+		emails := regexEmail.FindAllString(paragraph, -1)
+		phones := regexPhone.FindAllString(paragraph, -1)
+
+		//TODO некорректно собирает соц сети. В срез записывается Vue.js, Node.js, Bike.net:
+		socialNetworks := regexSocials.FindAllString(paragraph, -1)
+
 		sentences = append(sentences, SentenceData{
 			Index:            index,
 			WordsCount:       len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
@@ -408,6 +510,10 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			Sentence:         paragraph,
 			UpperCaseWords:   upperCaseWords,
 			IsPossibleBullet: isPossibleBullet,
+			Github:           github,
+			Emails:           emails,
+			Phones:           phones,
+			SocialNetworks:   socialNetworks,
 		})
 	}
 
@@ -417,7 +523,30 @@ func ParseCV(text string) ([]ExperienceString, error) {
 		if sentence.WordsCount == 0 {
 			continue
 		}
-		jobTitle := SentenceData{}
+
+		for _, skill := range sentence.Skills {
+			if !parser.ContainsItem(skills, skill) {
+				skills = append(skills, skill)
+			}
+		}
+
+		if len(sentence.Github) > 0 {
+			contactsData.Github = sentence.Github
+		}
+
+		if len(sentence.Emails) > 0 {
+			contactsData.Emails = append(contactsData.Emails, sentence.Emails...)
+		}
+
+		if len(sentence.Phones) > 0 {
+			contactsData.Phones = append(contactsData.Phones, sentence.Phones...)
+		}
+
+		for _, socialNetwork := range sentence.SocialNetworks {
+			if !parser.ContainsItem(contactsData.SocialNetworks, socialNetwork) {
+				contactsData.SocialNetworks = append(contactsData.SocialNetworks, socialNetwork)
+			}
+		}
 
 		// Процент полезной нагрузки в предложении
 		payloadPercent := (len(sentence.Skills) + len(sentence.Positions) + len(sentence.Level))
@@ -437,48 +566,16 @@ func ParseCV(text string) ([]ExperienceString, error) {
 			!sentence.IsPossibleBullet &&
 			(sentence.WordsCount < averageWordsCount ||
 				(sentence.WordsCount > maxWordCountParam) && (payloadPercent > 80) && (sentence.WordsCount-averageWordsCount < 6)) {
-			jobTitle = sentence
+			jobTitle := sentence
 			possibleJobTitles = append(possibleJobTitles, jobTitle)
 		}
+
 		if len(sentence.Date.DateStart) > 0 {
 			sentencesWithDates = append(sentencesWithDates, sentence)
 		}
 	}
 
-	/*
-	   Ожидается что дата для job title
-	   JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019
-	   будет либо в этой либо несколько строк выше/ниже
-	   JUNIOR FULL STACK DEVELOPER
-	   Jan, 2017 - June, 2019
-	   Это параметр который определяет максимальное расстояние между строками
-	*/
-	allowedInterval := 2
-
-	for _, possibleJobTitle := range possibleJobTitles {
-		startIndex := possibleJobTitle.Index - allowedInterval
-		if startIndex < 0 {
-			startIndex = 0
-		}
-
-		endIndex := possibleJobTitle.Index + allowedInterval
-		if endIndex >= len(sentences) {
-			endIndex = len(sentences) - 1
-		}
-
-		dateFound := false
-		for i := startIndex; i <= endIndex; i++ {
-			if sentences[i].Date != nil &&
-				sentences[i].Date.DateStart != "" {
-				dateFound = true
-				break
-			}
-		}
-
-		if dateFound {
-			titleSentences = append(titleSentences, sentences[possibleJobTitle.Index])
-		}
-	}
+	titleSentences = findTitleSentences(possibleJobTitles, sentences)
 
 	upperCasingTitles := 0
 	for _, titleSentence := range titleSentences {
@@ -488,14 +585,17 @@ func ParseCV(text string) ([]ExperienceString, error) {
 	}
 
 	experienceList = collectDataInRange(sentences, titleSentences)
+	//TODO собрать данные в addressData
+	contactsData.Address = addressData
 
-	// TODO добавить проверку на заголовки в верхнем регистре
-	if upperCasingTitles != 0 {
+	// TODO в parsedCV добавить JobTitle и Educations
+	parsedCV := CVData{
+		Experience: experienceList,
+		Contacts:   contactsData,
+		Skills:     skills,
+		//JobTitle:
+		//Educations:
 	}
 
-	if err != nil {
-		fmt.Println("err: ", err)
-	}
-
-	return experienceList, nil
+	return parsedCV, nil
 }
