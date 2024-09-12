@@ -351,6 +351,7 @@ func IsAllowedDistanceForWord(suggest spell.Suggestion) bool {
 	return suggest.Distance < 3
 }
 
+<<<<<<< HEAD
 /*
 Функция findTitleSentences фильтрует возможные job titles и возвращает данные исходя их условий.
 Считаем, что заголовки, которые возвращаются этой функцией - job title
@@ -397,6 +398,14 @@ func findTitleSentences(possibleJobTitles []SentenceData, allSentences []Sentenc
 }
 
 func ParseCV(text string) (CVData, error) {
+=======
+
+
+["1", "2", "3"]
+[ "1,2", "1,3", "1,2,3" ]
+
+func ParseCV(text string) ([]ExperienceString, error) {
+>>>>>>> 016940ef66d79f5a764c0c0042b5fc55075b7b42
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
 	if err != nil {
