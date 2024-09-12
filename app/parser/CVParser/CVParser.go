@@ -311,6 +311,11 @@ func IsAllowedDistanceForWord(suggest spell.Suggestion) bool {
 	return suggest.Distance < 3
 }
 
+
+
+["1", "2", "3"]
+[ "1,2", "1,3", "1,2,3" ]
+
 func ParseCV(text string) ([]ExperienceString, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
