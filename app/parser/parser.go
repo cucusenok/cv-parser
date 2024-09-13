@@ -4,6 +4,7 @@ import (
 	"cv-parser/spell"
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
 	"math"
 	"os"
 	"regexp"
@@ -77,6 +78,47 @@ func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) err
 		}
 	}
 	return rows.Err()
+}
+
+func LoadSkillsFromDB() (*spell.Spell, error) {
+	err := godotenv.Load()
+
+	if err != nil {
+		panic(err)
+	}
+	pgConnectionStr := os.Getenv("PG_CONNECTION_STR")
+
+	s := spell.New()
+	db, err := sql.Open("postgres", pgConnectionStr)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("loading...")
+	if err = scanQuery(db, `select alias from skills_aliases`, nil, func(rows *sql.Rows) error {
+		var alias string
+		if err := rows.Scan(&alias); err != nil {
+			if err.Error() == "sql: Scan error on column index 2, name \"cnt\": converting NULL to uint64 is unsupported" {
+				return nil
+			}
+			return err
+		}
+
+		if alias != "" {
+			s.AddEntry(spell.Entry{
+				Frequency: 1,
+				Word:      alias,
+				WordData: spell.WordData{
+					"type": "skill",
+				},
+			})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 func LoadSpellFromDB() (*spell.Spell, error) {
@@ -166,6 +208,68 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 	}
 
 	return s, nil
+}
+
+func UpdateSkillsInDB(aliases []string) error {
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	pgConnectionStr := os.Getenv("PG_CONNECTION_STR")
+	db, err := sql.Open("postgres", pgConnectionStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var firstSkillID int
+	foundFirst := false
+
+	for _, alias := range aliases {
+		var skillID int
+
+		err := db.QueryRow(`SELECT skill_id FROM skills_aliases WHERE alias = $1`, alias).Scan(&skillID)
+		if err != nil {
+			return fmt.Errorf("error selecting skill_id for alias %s: %w", alias, err)
+		}
+
+		if !foundFirst {
+			firstSkillID = skillID
+			foundFirst = true
+		} else {
+			if skillID == firstSkillID {
+				fmt.Printf("Skipping alias %s, as it already has skill_id %d\n", alias, skillID)
+				continue
+			}
+
+			_, err := db.Exec(`UPDATE skills_aliases SET skill_id = $1 WHERE alias = $2`, firstSkillID, alias)
+			if err != nil {
+				return fmt.Errorf("error updating skill_id for alias %s: %w", alias, err)
+			}
+
+			_, err = db.Exec(`UPDATE positions_skills SET skill_id = $1 WHERE skill_id = $2`, firstSkillID, skillID)
+			if err != nil {
+				pqErr, ok := err.(*pq.Error)
+				if ok && pqErr.Code == "23505" {
+					_, err := db.Exec(`DELETE FROM positions_skills WHERE skill_id = $1`, skillID)
+					if err != nil {
+						return fmt.Errorf("error deleting conflicting record from positions_skills for skill_id %d: %w", skillID, err)
+					}
+					fmt.Printf("Deleted conflicting record in positions_skills for skill_id %d\n", skillID)
+				} else {
+					return fmt.Errorf("error updating positions_skills for skill_id %d: %w", skillID, err)
+				}
+			}
+
+			_, err = db.Exec(`DELETE FROM skills WHERE id = $1`, skillID)
+			if err != nil {
+				return fmt.Errorf("error deleting from skills for skill_id %d: %w", skillID, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 type CVParseResult struct {

@@ -18,13 +18,13 @@ func IsAllowedDistanceForWord(suggest spell.Suggestion) bool {
 }
 
 func TestSomething(test *testing.T) {
-	spellInst, err := LoadSpellFromDB()
+	spellInst, err := LoadSkillsFromDB()
 	if err != nil {
 		panic(err)
 	}
 
 	processedWords := make(map[string]bool)
-	var groupsList [][]string
+
 	for _, v := range spellInst.Words {
 		if processedWords[v.Word] {
 			continue
@@ -53,7 +53,12 @@ func TestSomething(test *testing.T) {
 			}
 		}
 		if len(group) >= 2 {
-			groupsList = append(groupsList, group)
+			err := UpdateSkillsInDB(group)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			} else {
+				fmt.Println("Update complete!")
+			}
 			fmt.Println(group)
 		}
 
