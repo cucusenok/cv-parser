@@ -14,7 +14,9 @@ type TestCase struct {
 func Test_ParseCV(t *testing.T) {
 	tests := []TestCase{
 		{
-			input:  parser.CV_FULL_PARAGRAPH_FORMATED,
+			//input: parser.FULL_CV_YEGOR,
+			//input:  parser.CV_FULL_PARAGRAPH_FORMATED,
+			input:  parser.FULL_CV_VLADISLAV,
 			output: []ExperienceString{},
 		},
 	}

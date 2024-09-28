@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	RegexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`(19|20)\d{2}(.*(19|20)\d{2})?`)
+	RegexDateRangeExcludeEnd *regexp.Regexp = regexp.MustCompile(`\D(19|20)\d{2}(.*(19|20)\d{2})?\D`)
 	regexFullDate            *regexp.Regexp = regexp.MustCompile(`(?:(?P<day>\d{1,2})\D{1})?(?:(?P<month>\d{1,2}|(?i)[a-zа-я]+)\D{1})?(?P<year>\d{4})`)
 	RegexDates               *regexp.Regexp = regexp.MustCompile(`(?P<reverseDate>(19|20)\d{2}(\D{1,3}\d{1,2}|(?i)[a-zа-я]+)?(\D{1,3}\d{1,2})?)(\D|$)|(?P<normalDate>(\d{1,2}\D{1,3})?((\d{1,2}|(?i)[a-zа-я]+)\D{1,3})?(19|20)\d{2})`)
 	regexFullDateReverse     *regexp.Regexp = regexp.MustCompile(`(?P<year>(19|20)\d{2})(\D{1}(?P<month>(\d{1,2}|(?i)[a-zа-я]+)))(\D{1}(?P<day>\d{1,2}))?`)

@@ -6,6 +6,7 @@ import (
 	"cv-parser/spell"
 	"database/sql"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -37,7 +38,6 @@ type AddressData struct {
 type EducationData struct {
 	Date        *work_duration.WorkPeriod `json:"date"`
 	Place       string                    `json:"place"`
-	Title       string                    `json:"title"`
 	Levels      []string                  `json:"levels"`
 	Description []string                  `json:"description"`
 }
@@ -60,21 +60,24 @@ type ExperienceString struct {
 }
 
 type SentenceData struct {
-	Index            int                       `json:"index"`
-	WordsCount       int                       `json:"wordsCount"`
-	Commas           int                       `json:"commas"`
-	Words            []string                  `json:"words"`
-	Skills           []string                  `json:"skills"`
-	Positions        []string                  `json:"position"`
-	Level            []string                  `json:"level"`
-	Date             *work_duration.WorkPeriod `json:"date"`
-	Sentence         string                    `json:"sentence"`
-	UpperCaseWords   []string                  `json:"upperCaseWords"`
-	IsPossibleBullet bool                      `json:"isPossibleBullet"`
-	Github           string                    `json:"github"`
-	Phones           []string                  `json:"phones"`
-	SocialNetworks   []string                  `json:"social_networks"`
-	Emails           []string                  `json:"emails"`
+	Index                     int                       `json:"index"`
+	WordsCount                int                       `json:"words_count"`
+	Commas                    int                       `json:"commas"`
+	Words                     []string                  `json:"words"`
+	Skills                    []string                  `json:"skills"`
+	Positions                 []string                  `json:"position"`
+	Level                     []string                  `json:"level"`
+	Date                      *work_duration.WorkPeriod `json:"date"`
+	Sentence                  string                    `json:"sentence"`
+	UpperCaseWords            []string                  `json:"upper_case_words"`
+	IsPossibleBullet          bool                      `json:"is_possible_bullet"`
+	Github                    string                    `json:"github"`
+	Phones                    []string                  `json:"phones"`
+	SocialNetworks            []string                  `json:"social_networks"`
+	Emails                    []string                  `json:"emails"`
+	EducationLevels           []string                  `json:"education_levels"`
+	EducationPlace            string                    `json:"education_place"`
+	IsPossiblePartOfEducation bool                      `json:"is_possible_part_of_education"`
 }
 
 type CVData struct {
@@ -84,6 +87,10 @@ type CVData struct {
 	Experience []ExperienceString `json:"experience"`
 	Educations []EducationData    `json:"educations"`
 }
+
+var EducationHelpersKeys = []string{"GPA", "EDUCATION", "gpa", "education"}
+var EducationPlaceKeys = []string{"university", "University", "Unversity", "unversity"}
+var EducationLevelsKeys = []string{"master", "Master", "Bachelor", "bachelor", "MSc", "msc", "MS", "ms", "BSc", "bsc", "BS", "bs"}
 
 func scanQuery(db *sql.DB, sql string, args []any, fn func(*sql.Rows) error) error {
 	rows, err := db.Query(sql, args...)
@@ -186,6 +193,45 @@ func LoadSpellFromDB() (*spell.Spell, error) {
 	}
 
 	return s, nil
+}
+
+// calculateAverageDiff вычисляет среднее значение между индексами в массиве.
+func calculateAverageDiff(sentences []SentenceData) (int, error) {
+	if len(sentences) < 2 {
+		return 0, fmt.Errorf("недостаточно данных для вычисления среднего")
+	}
+
+	totalDiff := 0
+	for i := 1; i < len(sentences); i++ {
+		diff := sentences[i].Index - sentences[i-1].Index
+		totalDiff += diff
+	}
+
+	averageDiff := float64(totalDiff) / float64(len(sentences)-1)
+	roundedAverageDiff := int(math.Round(averageDiff)) // Округляем до ближайшего целого числа
+
+	return roundedAverageDiff, nil
+}
+
+// filterByAverageDiff фильтрует массив на основе средней разницы между индексами.
+func filterByAverageDiff(sentences []SentenceData) []SentenceData {
+	averageDiff, averageDiffErr := calculateAverageDiff(sentences)
+
+	if averageDiffErr != nil || len(sentences) < 2 {
+		return sentences
+	}
+
+	var filteredSentences []SentenceData
+	filteredSentences = append(filteredSentences, sentences[0]) // Добавляем первый элемент
+
+	for i := 1; i < len(sentences); i++ {
+		diff := sentences[i].Index - sentences[i-1].Index
+		if diff <= averageDiff {
+			filteredSentences = append(filteredSentences, sentences[i])
+		}
+	}
+
+	return filteredSentences
 }
 
 /*
@@ -396,6 +442,96 @@ func findTitleSentences(possibleJobTitles []SentenceData, allSentences []Sentenc
 	return titleSentences
 }
 
+// splitByAverageDiff делит массив на несколько подмассивов на основе среднего значения разницы между индексами.
+func splitByAverageDiff(indices []SentenceData, averageDiff int) [][]SentenceData {
+	if len(indices) < 2 {
+		return [][]SentenceData{indices}
+	}
+
+	var result [][]SentenceData
+	var currentSubArray []SentenceData
+
+	currentSubArray = append(currentSubArray, indices[0])
+
+	for i := 1; i < len(indices); i++ {
+		diff := indices[i].Index - indices[i-1].Index
+		if diff >= averageDiff {
+			result = append(result, currentSubArray)
+			currentSubArray = []SentenceData{}
+		}
+		currentSubArray = append(currentSubArray, indices[i])
+	}
+
+	// Добавляем последний подмассив в результат
+	if len(currentSubArray) > 0 {
+		result = append(result, currentSubArray)
+	}
+
+	return result
+}
+
+func collectEducationDataInRange(sentences, educationSentences []SentenceData) []EducationData {
+	averageDiff, averageDiffErr := calculateAverageDiff(educationSentences)
+	var collectedData []EducationData
+	if averageDiffErr != nil {
+		return collectedData
+	}
+	subArrays := [][]SentenceData{}
+
+	if averageDiff > 1 {
+		subArrays = splitByAverageDiff(educationSentences, averageDiff)
+	} else {
+		subArrays = splitByAverageDiff(educationSentences, len(educationSentences))
+	}
+
+	for i := 0; i < len(subArrays); i++ {
+		startIndex := 0
+		endIndex := 0
+		if averageDiff == 1 {
+			startIndex = subArrays[i][0].Index
+			endIndex = subArrays[i][len(subArrays[i])-1].Index + 1
+		} else if i < len(subArrays)-1 {
+			startIndex = subArrays[i][0].Index
+			endIndex = subArrays[i+1][0].Index
+		} else {
+			startIndex = subArrays[i][0].Index
+			endIndex = subArrays[i][0].Index + averageDiff
+		}
+
+		educationData := EducationData{}
+		for _, sentence := range sentences {
+			if sentence.Index >= startIndex && sentence.Index < endIndex {
+				educationData.Description = append(educationData.Description, sentence.Sentence)
+				if sentence.Date.DateStart != "" {
+					educationData.Date = sentence.Date
+				}
+				if len(sentence.EducationLevels) > 0 {
+					for _, level := range sentence.EducationLevels {
+						if !parser.ContainsItem(educationData.Levels, level) {
+							educationData.Levels = append(educationData.Levels, level)
+						}
+					}
+				}
+				if len(sentence.EducationPlace) > 0 {
+					educationData.Place = sentence.EducationPlace
+				}
+			}
+		}
+
+		collectedData = append(collectedData, educationData)
+	}
+	return collectedData
+}
+
+func containsWord(word string, keys []string) bool {
+	for _, key := range keys {
+		if word == key {
+			return true
+		}
+	}
+	return false
+}
+
 func ParseCV(text string) (CVData, error) {
 	err := godotenv.Load()
 	spellInstance, err = LoadSpellFromDB()
@@ -405,6 +541,7 @@ func ParseCV(text string) (CVData, error) {
 
 	contactsData := ContactsData{}
 	experienceList := []ExperienceString{}
+	educations := []EducationData{}
 	sentences := []SentenceData{}
 	titleSentences := []SentenceData{}
 
@@ -419,6 +556,7 @@ func ParseCV(text string) (CVData, error) {
 	cvData := text
 
 	possibleJobTitles := []SentenceData{}
+	possiblePartsOfEducation := []SentenceData{}
 	sentencesWithDates := []SentenceData{}
 	skills := []string{}
 
@@ -447,13 +585,31 @@ func ParseCV(text string) (CVData, error) {
 		skills := []string{}
 		positions := []string{}
 		levels := []string{}
+		educationLevels := []string{}
+		educationPlace := ""
 		upperCaseWords := []string{}
 		combinations := parser.GenerateCombinations(strings.Split(paragraph, " "))
 		words := strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))
 		isPossibleBullet := false
+		isPossiblePartOfEducation := false
 
 		if strings.HasPrefix(paragraph, "•") {
 			isPossibleBullet = true
+		}
+
+		// TODO после добавления ключевых слов в бд, перенести эту часть кода в цикл по комбинациям (combinations)
+		for _, word := range words {
+			if containsWord(word, EducationLevelsKeys) && !parser.ContainsItem(educationLevels, word) {
+				educationLevels = append(educationLevels, word)
+				isPossiblePartOfEducation = true
+			}
+			if containsWord(word, EducationPlaceKeys) {
+				educationPlace = paragraph
+				isPossiblePartOfEducation = true
+			}
+			//if containsWord(word, EducationHelpersKeys) {
+			//	isPossiblePartOfEducation = true
+			//}
 		}
 
 		for _, combination := range combinations {
@@ -498,22 +654,29 @@ func ParseCV(text string) (CVData, error) {
 		//TODO некорректно собирает соц сети. В срез записывается Vue.js, Node.js, Bike.net:
 		socialNetworks := regexSocials.FindAllString(paragraph, -1)
 
+		if len(date.DateStart) > 0 {
+			isPossiblePartOfEducation = true
+		}
+
 		sentences = append(sentences, SentenceData{
-			Index:            index,
-			WordsCount:       len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
-			Words:            strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, "")),
-			Commas:           strings.Count(paragraph, ","),
-			Skills:           skills,
-			Positions:        positions,
-			Level:            levels,
-			Date:             date,
-			Sentence:         paragraph,
-			UpperCaseWords:   upperCaseWords,
-			IsPossibleBullet: isPossibleBullet,
-			Github:           github,
-			Emails:           emails,
-			Phones:           phones,
-			SocialNetworks:   socialNetworks,
+			Index:                     index,
+			WordsCount:                len(strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, ""))),
+			Words:                     strings.Fields(specialCharsetRegex.ReplaceAllString(paragraph, "")),
+			Commas:                    strings.Count(paragraph, ","),
+			Skills:                    skills,
+			Positions:                 positions,
+			Level:                     levels,
+			Date:                      date,
+			Sentence:                  paragraph,
+			UpperCaseWords:            upperCaseWords,
+			IsPossibleBullet:          isPossibleBullet,
+			Github:                    github,
+			Emails:                    emails,
+			Phones:                    phones,
+			SocialNetworks:            socialNetworks,
+			EducationLevels:           educationLevels,
+			EducationPlace:            educationPlace,
+			IsPossiblePartOfEducation: isPossiblePartOfEducation,
 		})
 	}
 
@@ -564,7 +727,7 @@ func ParseCV(text string) (CVData, error) {
 		if len(sentence.Positions) > 0 &&
 			(payloadPercent >= 50) &&
 			!sentence.IsPossibleBullet &&
-			(sentence.WordsCount < averageWordsCount ||
+			(sentence.WordsCount <= averageWordsCount ||
 				(sentence.WordsCount > maxWordCountParam) && (payloadPercent > 80) && (sentence.WordsCount-averageWordsCount < 6)) {
 			jobTitle := sentence
 			possibleJobTitles = append(possibleJobTitles, jobTitle)
@@ -573,8 +736,29 @@ func ParseCV(text string) (CVData, error) {
 		if len(sentence.Date.DateStart) > 0 {
 			sentencesWithDates = append(sentencesWithDates, sentence)
 		}
+
+		// Параметр, отвечающий за максимально допустимое расстояние между строками с информацией об обучении.
+		// В основном, помогает отфильтровать даты из различных блоков
+		maxIndexGapInEducationSentence := 20
+
+		/*
+			Условие для строк, которые могут быть частью информации об обучении.
+			Условия:
+				1) sentence.IsPossiblePartOfEducation в значении true
+				2) Считаю, что кол-во слов в строке должно быть меньше либо равно среднему значению.
+				3) В строке не находится информации о sentence.Positions.
+				4) GAP между индексами строк не больше maxIndexGapInEducationSentence
+		*/
+
+		if sentence.IsPossiblePartOfEducation &&
+			(sentence.WordsCount <= averageWordsCount || len(sentence.Date.DateStart) > 0) &&
+			len(sentence.Positions) == 0 &&
+			(len(possiblePartsOfEducation) == 0 || sentence.Index-possiblePartsOfEducation[len(possiblePartsOfEducation)-1].Index <= maxIndexGapInEducationSentence) {
+			possiblePartsOfEducation = append(possiblePartsOfEducation, sentence)
+		}
 	}
 
+	possibleEducationSentences := filterByAverageDiff(possiblePartsOfEducation)
 	titleSentences = findTitleSentences(possibleJobTitles, sentences)
 
 	upperCasingTitles := 0
@@ -585,16 +769,19 @@ func ParseCV(text string) (CVData, error) {
 	}
 
 	experienceList = collectDataInRange(sentences, titleSentences)
+	// TODO необходимо научиться нормально определять конец блока, для того, чтобы не собирать лишнюю инфу в description. Это необходимо и для Experience
+	educations = collectEducationDataInRange(sentences, possibleEducationSentences)
+
 	//TODO собрать данные в addressData
 	contactsData.Address = addressData
 
-	// TODO в parsedCV добавить JobTitle и Educations
+	// TODO в parsedCV добавить JobTitle
 	parsedCV := CVData{
 		Experience: experienceList,
 		Contacts:   contactsData,
 		Skills:     skills,
+		Educations: educations,
 		//JobTitle:
-		//Educations:
 	}
 
 	return parsedCV, nil

@@ -507,3 +507,81 @@ Stack: HTML5, CSS3, React, NextJS, Redux, Typescript, Bootstrap, vue3, docker.
 • Занимался исправлением адаптивной версии сайта, что позволило пользоваться приложением, как на ПК, так и на смартфоне, что расширило аудиторию ещё на 10%;
 
 • Исправлял верстку на сайте, для большего соответствия макету и требованиям заказчика. Stack: HTML5, CSS3, JS, Bootstrap.`
+
+const CV_CUCUSENOK_START_FROM_EDUCATION_FORMATED = `
+EDUCATION
+2016 - 2020, BSc with Honours, KNU
+Information computing technology
+2020 - 2022, MSc, KNU Informationcomputingtechnology
+BACKEND
+Node.js, Python, FastApi, Flask, Golang, Mongo, SQL, Postgres, MVC
+ENVIRONMENT & COMMON Docker, VirualBox, HTTP, WebRTC, RPC, WebSocket, REST, OOP, SOLID, DRY, KISS
+certificates
+Cisco Networking Academy
+MANAGE & DESIGN
+Figma, Notion, Waterfall, Agile, SCRUM, Jira, Confluence, BitBacket, YouTrack, Trello, 
+Miro, AdobeXD
+; Cisco,IntroductiontoNetworksBacheloN ; Cisco,ProgrammingEssentialsinPythoD ; Cisco,RoutingandSwitchingEssentialR ; Cisco,IntroductiontoCybersecurity
+experience
+FOUNDER (START-UP) Nov, 2022 - May, 2023
+' Developed music recognition and sharing service across diverse sources1
+' Built a robust CI/CD pipeline encompassing backend services, IOS app deployment to TestFlight, Android app packaging to
+APK, and web deployment using GitHub Actions and AWS (EC2, S3)1
+' Developed a cross-platform application using Flutter, ensuring seamless functionality on Android, IOS, and web platforms1
+' Implemented audio decoding and playback features for streaming services on Android and IOS, utilizing proprietary Flutter-
+plugins and programming languages such as Java/Kotlin and Swift1
+' Leveraged API integrations to enhance application functionality and connectivity, while employing GoLang for the central
+monolith and Python and Node for microservices.
+SENIOR FULL STACK ENGINEER
+5g Networks
+Nov, 2020 - Nov, 2022
+' Performed analysis and problem-solving for 3GPP, 4G/LTE, 5G, and O-RAN architectures1
+' Designed and developed a user-friendly interface, ensuring a comfortable and intuitive experience for users1
+' Led system design efforts, collaborating with a team of dozens of engineers to architect robust and scalable solutions1 ' Developed an automated interface generation system using YANG models, enabling efficient DSL-based interfaces1
+' Implemented a DSL-based interface with full-text search and XML-tree validation/generation capabilities.
+Middleware Analysis Platform
+Portfolio
+' Designed and developed interfaces utilizing micro-frontend architecture1
+' Designed visually engaging interfaces capable of effectively visualizing and presenting large volumes of data1
+' Developed Python-based microservices to efficiently store and visualize data, ensuring seamless functionality1
+' Implemented robust logging using Zipkin for query tracking, while leveraging Logstash and Elastic for log storage1
+' Utilized 'out-of-the-box' solutions to design DSL and interfaces for hierarchical control system rights, employing RBAC (Role-
+Based Access Control) at the application level to ensure secure access across multiple products.
+ SENIOR FRONTEND ENGINEER Freeze - online viewing room
+Jun, 2020 - Nov, 2020
+cucusenok.work@gmail.com
+FGP linkedin.com/in/cucusenok
+Portfolio Product
+github.com/Cucusenok
+ Led and trained a team of engineers, overseeing task control, sprint preparation, and maintenance processes
+ Successfully finalized and redesigned both the mobile application and web version, enhancing user experi@encuecaunsdenok functionality
+ Implemented OAuth and two-step verification via SMS, ensuring secure access and integration with RESTful API. Neo4Web
+Portfolio
+ Developed a real-time streaming application specifically for Unreal Engine
+ Collaborated as part of a 10-member team, including Unreal Engine (UE) and backend developers
+ Designed and supported interface integration for WebRTC across various browsers and operating systems
+ Conducted thorough testing and bug fixing across different environments using remote machines, Virtual Boxes, and
+physical devices
+ Implemented command and data exchange functionality between the client and the Unreal Engine application.
+FULLSTACK DEVELOPER June, 2019 - June, 2020
+Bike.net: social network for bikers
+ Effectively allocated tasks and responsibilities between frontend and backend developers, ensuring efficient collaboration
+and workflow management
+ Streamlined and simplified the conversion process of work-flow documentation, descriptions, and processes, enhancing
+team productivity and understanding
+ Successfully updated the current project state to align with modern requirements and industry best practices
+ Developed a search engine utilizing Solr and MySQL database, facilitating efficient and accurate data retrieval and search
+functionalities.
+Tinder-like Game for Durex Portfolio
+ Conducted comprehensive revisions of an existing project, addressing issues, adding new features, and enhancing overall functionality
+ Performed code proofreading, debugging, and optimization to improve the project's stability and performance
+ Successfully implemented a push notification system, enabling real-time notifications and enhancing user engagement
+ Developed an admin panel to facilitate content control and management, providing an intuitive interface for efficient
+administration.
+JUNIOR FULL STACK DEVELOPER Jan, 2017 - June, 2019 Private practice / freelance
+ Designed and developed a system utilizing a messenger bot and online schedule to facilitate audience discovery for the internal university website
+ Developed an application for visualizing and analyzing Apache server logs, providing valuable insights into server performance and user behavior
+ Created a cloud file manager with robust file-sharing capabilities, incorporating RBAC (Role-Based Access Control) for secure and controlled file access
+ Successfully completed an Internship at the Institute of Artificial Intelligence of Ukraine, gaining hands-on experience in various aspects of AI, including text classification and fundamental methodologies
+ Studied and implemented key techniques such as tokenization, vectorization, lemmatization, logistic regression, and Random Forest in the context of natural language processing and machine learning.
+`
